@@ -1,7 +1,10 @@
 import { Types } from "mongoose";
 
+
 import Installment from "@/models/Installment";
 import Loan from "@/models/Loan";
+import "@/models/User";
+
 import { createNotification } from "@/lib/notifications/createNotification";
 import { buildInstallmentReminderSms, sendSms } from "@/lib/sms/sendSms";
 

@@ -169,9 +169,8 @@ export function buildMeetingReminderSms({
   const shortReason =
     reason.length > 70 ? `${reason.slice(0, 67)}...` : reason;
 
-  return `Welfare Reminder: ${title} is tomorrow (${dateText}) at ${timeText}, ${venue}. Reason: ${shortReason}. Please attend on time.`;
+  return `Welfare Notice: ${title} is scheduled on ${dateText} at ${timeText}, ${venue}. Reason: ${shortReason}. Please attend on time.`;
 }
-
 export function buildInstallmentReminderSms({
   loanType,
   amount,
