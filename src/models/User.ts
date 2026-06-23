@@ -79,6 +79,24 @@ const userSchema = new Schema(
       default: "pending_admin_approval",
     },
 
+    profileImage: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    themeMode: {
+      type: String,
+      enum: ["light", "dark"],
+      default: "light",
+    },
+
+    themeColor: {
+      type: String,
+      default: "#9b6f45",
+      trim: true,
+    },
+
     isVerified: {
       type: Boolean,
       default: false,
@@ -87,7 +105,6 @@ const userSchema = new Schema(
   {
     timestamps: true,
   }
-  
 );
 
 const User = models.User || model("User", userSchema);

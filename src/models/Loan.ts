@@ -96,6 +96,20 @@ const loanSchema = new Schema(
       default: 0,
       min: 0,
     },
+    penaltyAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    penaltyAppliedCount: {
+      type: Number,
+      default: 0,
+    },
+
+    lastPenaltyAppliedAt: {
+      type: Date,
+      default: null,
+    },
 
     paidAmount: {
       type: Number,
@@ -384,6 +398,7 @@ loanSchema.index({ disbursementDate: -1 });
 loanSchema.index({ nextEMIDueDate: 1 });
 loanSchema.index({ createdAt: -1 });
 loanSchema.index({ updatedAt: -1 });
+loanSchema.index({ lastPenaltyAppliedAt: -1 });
 
 const Loan = models.Loan || model("Loan", loanSchema);
 

@@ -22,6 +22,7 @@ import {
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import AccountMenu from "@/components/dashboard/AccountMenu";
 import NotificationBell from "@/components/dashboard/NotificationBell";
+import { DashboardThemeProvider } from "@/components/theme/DashboardThemeProvider";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -30,6 +31,12 @@ const roboto = Roboto({
 });
 
 type UserRole = "admin" | "member" | "welfare_officer" | "finance_officer";
+
+type CurrentUserExtra = {
+  profileImage?: string;
+  themeMode?: "light" | "dark";
+  themeColor?: string;
+};
 
 interface MenuItem {
   title: string;
@@ -334,6 +341,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const currentUser = await getCurrentUser();
+  const userExtra = currentUser as typeof currentUser & CurrentUserExtra;
 
   const role = normalizeRole(currentUser?.role);
   const menuItems = getMenuByRole(role);
@@ -343,112 +351,115 @@ export default async function DashboardLayout({
     email: currentUser?.email || "",
     role,
     accountStatus: currentUser?.accountStatus || "",
+    profileImage: userExtra?.profileImage || "",
   };
 
   return (
-    <div
-      className={`${roboto.className} h-screen overflow-hidden bg-[#2c241f] text-white`}
-    >
-      <div className="flex h-screen overflow-hidden">
-        <aside className="dashboard-no-scrollbar relative hidden h-screen w-80 shrink-0 overflow-y-auto overflow-x-hidden border-r border-[#d8ad80]/18 bg-[#211b17] p-6 text-white shadow-[25px_0_100px_rgba(44,36,31,0.55)] lg:block">
-          <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#c99b69]/25 blur-[100px]" />
-          <div className="pointer-events-none absolute -right-28 top-40 h-80 w-80 rounded-full bg-[#d8ad80]/14 blur-[120px]" />
-          <div className="pointer-events-none absolute bottom-0 left-0 h-80 w-80 rounded-full bg-[#9b6f45]/18 blur-[120px]" />
+    <DashboardThemeProvider>
+      <div
+        className={`${roboto.className} h-screen overflow-hidden bg-[#2c241f] text-white`}
+      >
+        <div className="flex h-screen overflow-hidden">
+          <aside className="dashboard-no-scrollbar relative hidden h-screen w-80 shrink-0 overflow-y-auto overflow-x-hidden border-r border-[#d8ad80]/18 bg-[#211b17] p-6 text-white shadow-[25px_0_100px_rgba(44,36,31,0.55)] lg:block">
+            <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#c99b69]/25 blur-[100px]" />
+            <div className="pointer-events-none absolute -right-28 top-40 h-80 w-80 rounded-full bg-[#d8ad80]/14 blur-[120px]" />
+            <div className="pointer-events-none absolute bottom-0 left-0 h-80 w-80 rounded-full bg-[#9b6f45]/18 blur-[120px]" />
 
-          <div className="relative z-10">
-            <div className="mb-10 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d8ad80]/25 bg-gradient-to-br from-[#d8ad80]/20 to-[#9b6f45]/18 shadow-[0_0_45px_rgba(216,173,128,0.22)] backdrop-blur-2xl">
-                <HandHeart size={24} className="text-[#d8ad80]" />
-              </div>
+            <div className="relative z-10">
+              <div className="mb-10 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d8ad80]/25 bg-gradient-to-br from-[#d8ad80]/20 to-[#9b6f45]/18 shadow-[0_0_45px_rgba(216,173,128,0.22)] backdrop-blur-2xl">
+                  <HandHeart size={24} className="text-[#d8ad80]" />
+                </div>
 
-              <div>
-                <h2 className="text-2xl font-extrabold tracking-tight text-white">
-                  Welfare
-                </h2>
+                <div>
+                  <h2 className="text-2xl font-extrabold tracking-tight text-white">
+                    Welfare
+                  </h2>
 
-                <p className="text-sm font-medium text-[#ead9c8]/70">
-                  {getDashboardTitle(role)}
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-7 rounded-[26px] border border-[#d8ad80]/25 bg-[#fbf7ef]/10 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-              <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-[#d8ad80]">
-                {getRoleHeaderLabel(role)}
-              </p>
-
-              <h3 className="mt-2 text-lg font-bold text-white">
-                {getControlTitle(role)}
-              </h3>
-
-              <p className="mt-1 text-xs leading-5 text-[#ead9c8]/65">
-                {getControlDescription(role)}
-              </p>
-
-              {currentUser ? (
-                <div className="mt-4 rounded-2xl border border-[#d8ad80]/18 bg-[#2c241f]/55 p-3">
-                  <p className="text-xs font-semibold text-[#ead9c8]/60">
-                    Logged in as
-                  </p>
-
-                  <p className="mt-1 truncate text-sm font-bold text-white">
-                    {currentUser.fullName || currentUser.email}
-                  </p>
-
-                  <p className="mt-1 text-xs capitalize text-[#d8ad80]">
-                    {formatDisplayRole(currentUser.role)}
+                  <p className="text-sm font-medium text-[#ead9c8]/70">
+                    {getDashboardTitle(role)}
                   </p>
                 </div>
-              ) : null}
-            </div>
+              </div>
 
-            <nav className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`group flex items-center gap-4 rounded-[20px] border border-transparent px-4 py-3 text-base font-semibold text-[#ead9c8]/82 transition hover:border-[#d8ad80]/22 hover:text-white hover:shadow-[0_15px_45px_rgba(216,173,128,0.14)] ${item.hoverBg}`}
-                  >
-                    <span
-                      className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8ad80]/18 ${item.iconBg} ${item.iconColor} shadow-sm backdrop-blur-xl transition group-hover:border-[#d8ad80]/25 group-hover:bg-[#fbf7ef]/12 group-hover:text-white`}
-                    >
-                      <Icon size={18} />
-                    </span>
-
-                    <span>{item.title}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        </aside>
-
-        <main className="dashboard-no-scrollbar h-screen flex-1 overflow-y-auto overflow-x-hidden bg-[#eee6da]">
-          <div className="sticky top-0 z-40 border-b border-[#d9c8b8] bg-[#fbf7ef]/75 px-4 py-3 backdrop-blur-2xl lg:px-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.28em] text-[#9b6f45]">
+              <div className="mb-7 rounded-[26px] border border-[#d8ad80]/25 bg-[#fbf7ef]/10 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+                <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-[#d8ad80]">
                   {getRoleHeaderLabel(role)}
                 </p>
 
-                <h1 className="mt-1 text-lg font-extrabold text-[#2b241f]">
-                  {getDashboardTitle(role)}
-                </h1>
+                <h3 className="mt-2 text-lg font-bold text-white">
+                  {getControlTitle(role)}
+                </h3>
+
+                <p className="mt-1 text-xs leading-5 text-[#ead9c8]/65">
+                  {getControlDescription(role)}
+                </p>
+
+                {currentUser ? (
+                  <div className="mt-4 rounded-2xl border border-[#d8ad80]/18 bg-[#2c241f]/55 p-3">
+                    <p className="text-xs font-semibold text-[#ead9c8]/60">
+                      Logged in as
+                    </p>
+
+                    <p className="mt-1 truncate text-sm font-bold text-white">
+                      {currentUser.fullName || currentUser.email}
+                    </p>
+
+                    <p className="mt-1 text-xs capitalize text-[#d8ad80]">
+                      {formatDisplayRole(currentUser.role)}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="flex items-center gap-3">
-                <NotificationBell />
-                <AccountMenu user={accountUser} />
+              <nav className="space-y-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`group flex items-center gap-4 rounded-[20px] border border-transparent px-4 py-3 text-base font-semibold text-[#ead9c8]/82 transition hover:border-[#d8ad80]/22 hover:text-white hover:shadow-[0_15px_45px_rgba(216,173,128,0.14)] ${item.hoverBg}`}
+                    >
+                      <span
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8ad80]/18 ${item.iconBg} ${item.iconColor} shadow-sm backdrop-blur-xl transition group-hover:border-[#d8ad80]/25 group-hover:bg-[#fbf7ef]/12 group-hover:text-white`}
+                      >
+                        <Icon size={18} />
+                      </span>
+
+                      <span>{item.title}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          <main className="dashboard-no-scrollbar h-screen flex-1 overflow-y-auto overflow-x-hidden bg-[var(--bg-primary,#eee6da)]">
+            <div className="sticky top-0 z-40 border-b border-[#d9c8b8] bg-[var(--bg-card,#fbf7ef)]/75 px-4 py-3 backdrop-blur-2xl lg:px-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-[0.28em] text-[var(--theme-color,#9b6f45)]">
+                    {getRoleHeaderLabel(role)}
+                  </p>
+
+                  <h1 className="mt-1 text-lg font-extrabold text-[var(--text-primary,#2b241f)]">
+                    {getDashboardTitle(role)}
+                  </h1>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <NotificationBell />
+                  <AccountMenu user={accountUser} />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="min-h-full w-full p-4 lg:p-6">{children}</div>
-        </main>
+            <div className="min-h-full w-full p-4 lg:p-6">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </DashboardThemeProvider>
   );
 }

@@ -5,6 +5,7 @@ import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 
 type UserRole = "member" | "admin" | "welfare_officer" | "finance_officer";
+type ThemeMode = "light" | "dark";
 
 interface JwtPayload {
   userId: string;
@@ -24,6 +25,10 @@ function normalizeRole(role?: string): UserRole {
   if (normalizedRole === "finance_officer") return "finance_officer";
 
   return "member";
+}
+
+function normalizeThemeMode(themeMode?: string): ThemeMode {
+  return themeMode === "dark" ? "dark" : "light";
 }
 
 export async function getCurrentUser() {
@@ -71,6 +76,11 @@ export async function getCurrentUser() {
       jobRole: user.jobRole,
       employeeId: user.employeeId,
       salaryRange: user.salaryRange,
+
+      profileImage: user.profileImage || "",
+      themeMode: normalizeThemeMode(user.themeMode),
+      themeColor: user.themeColor || "#9b6f45",
+
       isVerified: user.isVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

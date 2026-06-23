@@ -16,34 +16,34 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 type HistoryItem = {
-  _id: string;
+  _id?: string;
 
-  loanId: string;
-  loanReference: string;
+  loanId?: string;
+  loanReference?: string;
 
-  userId: string;
-  memberName: string;
-  memberEmail: string;
-  memberPhone: string;
-  employeeId: string;
+  userId?: string;
+  memberName?: string;
+  memberEmail?: string;
+  memberPhone?: string;
+  employeeId?: string;
 
-  loanType: string;
-  loanStatus: string;
+  loanType?: string;
+  loanStatus?: string;
 
-  installmentNumber: number;
-  totalInstallments: number;
+  installmentNumber?: number;
+  totalInstallments?: number;
 
-  amount: number;
-  paidAmount: number;
-  paymentReference: string;
+  amount?: number;
+  paidAmount?: number;
+  paymentReference?: string;
 
-  approvedAmount: number;
-  totalRepayment: number;
-  remainingBalance: number;
-  totalPaidInstallments: number;
+  approvedAmount?: number;
+  totalRepayment?: number;
+  remainingBalance?: number;
+  totalPaidInstallments?: number;
 
-  dueDate: string;
-  paidAt: string | null;
+  dueDate?: string;
+  paidAt?: string | null;
 };
 
 type Summary = {
@@ -55,8 +55,8 @@ type Summary = {
 
 type ApiResponse = {
   success: boolean;
-  history: HistoryItem[];
-  summary: Summary;
+  history?: HistoryItem[];
+  summary?: Summary;
   message?: string;
 };
 
@@ -67,8 +67,12 @@ const defaultSummary: Summary = {
   uniqueLoans: 0,
 };
 
+function safeText(value?: string | number | null) {
+  return String(value || "").trim();
+}
+
 function formatCurrency(amount?: number) {
-  return `Rs. ${Number(amount || 0).toLocaleString()}`;
+  return `Rs. ${Number(amount || 0).toLocaleString("en-LK")}`;
 }
 
 function formatDate(value?: string | null) {
@@ -110,34 +114,63 @@ function getHistoryKey(item: HistoryItem, index: number) {
   );
 }
 
+async function readJsonResponse(response: Response) {
+  const contentType = response.headers.get("content-type");
+
+  if (!contentType?.includes("application/json")) {
+    await response.text();
+
+    throw new Error(
+      "API returned HTML instead of JSON. Check /api/finance/installment-history route."
+    );
+  }
+
+  return response.json();
+}
+
 export default function FinanceInstallmentHistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [summary, setSummary] = useState<Summary>(defaultSummary);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+
   const initialized = useRef(false);
 
   async function loadHistory(showLoader = true) {
     try {
       if (showLoader) setLoading(true);
+
       setError("");
 
-      const res = await fetch("/api/finance/installment-history", {
+      const response = await fetch("/api/finance/installment-history", {
+        method: "GET",
         cache: "no-store",
       });
 
-      const data = (await res.json()) as ApiResponse;
+      const data = (await readJsonResponse(response)) as ApiResponse;
 
       if (!data.success) {
+        setHistory([]);
+        setSummary(defaultSummary);
         setError(data.message || "Failed to load installment history.");
         return;
       }
 
       setHistory(data.history || []);
-      setSummary(data.summary || defaultSummary);
-    } catch {
-      setError("Something went wrong while loading installment history.");
+      setSummary({
+        ...defaultSummary,
+        ...(data.summary || {}),
+      });
+    } catch (err) {
+      console.error("LOAD_FINANCE_INSTALLMENT_HISTORY_ERROR", err);
+      setHistory([]);
+      setSummary(defaultSummary);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while loading installment history."
+      );
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -145,6 +178,7 @@ export default function FinanceInstallmentHistoryPage() {
 
   useEffect(() => {
     if (initialized.current) return;
+
     initialized.current = true;
 
     const timeout = window.setTimeout(() => {
@@ -159,7 +193,6 @@ export default function FinanceInstallmentHistoryPage() {
       window.clearTimeout(timeout);
       window.clearInterval(interval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredHistory = useMemo(() => {
@@ -169,12 +202,12 @@ export default function FinanceInstallmentHistoryPage() {
 
     return history.filter((item) => {
       return (
-        item.memberName.toLowerCase().includes(query) ||
-        item.memberPhone.toLowerCase().includes(query) ||
-        item.employeeId.toLowerCase().includes(query) ||
-        item.loanType.toLowerCase().includes(query) ||
-        item.loanReference.toLowerCase().includes(query) ||
-        item.paymentReference.toLowerCase().includes(query)
+        safeText(item.memberName).toLowerCase().includes(query) ||
+        safeText(item.memberPhone).toLowerCase().includes(query) ||
+        safeText(item.employeeId).toLowerCase().includes(query) ||
+        safeText(item.loanType).toLowerCase().includes(query) ||
+        safeText(item.loanReference).toLowerCase().includes(query) ||
+        safeText(item.paymentReference).toLowerCase().includes(query)
       );
     });
   }, [history, search]);
@@ -196,68 +229,46 @@ export default function FinanceInstallmentHistoryPage() {
           </p>
         </div>
 
-        <Button onClick={() => loadHistory(true)} variant="outline">
+        <Button
+          type="button"
+          onClick={() => void loadHistory(true)}
+          variant="outline"
+          className="rounded-2xl border-[#d9c8b8] bg-[#fbf7ef] text-[#2b241f] hover:bg-[#fffaf3]"
+        >
           <RefreshCcw size={16} className="mr-2" />
           Refresh
         </Button>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="text-green-700" />
-              <div>
-                <p className="text-sm text-[#6b5e54]">Total Payments</p>
-                <h2 className="mt-1 text-3xl font-extrabold">
-                  {summary.totalPayments}
-                </h2>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          title="Total Payments"
+          value={summary.totalPayments}
+          icon={CheckCircle2}
+          iconClass="text-green-700"
+        />
 
-        <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <WalletCards className="text-[#9b6f45]" />
-              <div>
-                <p className="text-sm text-[#6b5e54]">Total Collected</p>
-                <h2 className="mt-1 text-2xl font-extrabold">
-                  {formatCurrency(summary.totalCollected)}
-                </h2>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          title="Total Collected"
+          value={formatCurrency(summary.totalCollected)}
+          icon={WalletCards}
+          iconClass="text-[#9b6f45]"
+          valueClass="text-2xl"
+        />
 
-        <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <UserRound className="text-blue-700" />
-              <div>
-                <p className="text-sm text-[#6b5e54]">Members</p>
-                <h2 className="mt-1 text-3xl font-extrabold">
-                  {summary.uniqueMembers}
-                </h2>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          title="Members"
+          value={summary.uniqueMembers}
+          icon={UserRound}
+          iconClass="text-blue-700"
+        />
 
-        <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <FileText className="text-orange-700" />
-              <div>
-                <p className="text-sm text-[#6b5e54]">Loans</p>
-                <h2 className="mt-1 text-3xl font-extrabold">
-                  {summary.uniqueLoans}
-                </h2>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <SummaryCard
+          title="Loans"
+          value={summary.uniqueLoans}
+          icon={FileText}
+          iconClass="text-orange-700"
+        />
       </div>
 
       <div className="mb-5 flex items-center gap-3 rounded-3xl border border-[#d9c8b8] bg-[#fbf7ef] p-4">
@@ -297,15 +308,16 @@ export default function FinanceInstallmentHistoryPage() {
                 <CardContent className="flex flex-col justify-between gap-4 p-5 xl:flex-row xl:items-center">
                   <div>
                     <h3 className="text-lg font-extrabold">
-                      {item.memberName}
+                      {item.memberName || "Unknown Member"}
                     </h3>
 
                     <p className="text-xs font-semibold text-[#9b6f45]">
-                      {item.loanReference}
+                      {item.loanReference || "N/A"}
                     </p>
 
                     <p className="mt-1 text-sm text-[#6b5e54]">
-                      {item.loanType} • Installment {item.installmentNumber}/
+                      {item.loanType || "Loan"} • Installment{" "}
+                      {item.installmentNumber || "-"}/
                       {item.totalInstallments || "-"}
                     </p>
 
@@ -340,5 +352,34 @@ export default function FinanceInstallmentHistoryPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function SummaryCard({
+  title,
+  value,
+  icon: Icon,
+  iconClass,
+  valueClass = "text-3xl",
+}: {
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  iconClass: string;
+  valueClass?: string;
+}) {
+  return (
+    <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-3">
+          <Icon className={iconClass} />
+
+          <div>
+            <p className="text-sm text-[#6b5e54]">{title}</p>
+            <h2 className={`mt-1 font-extrabold ${valueClass}`}>{value}</h2>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

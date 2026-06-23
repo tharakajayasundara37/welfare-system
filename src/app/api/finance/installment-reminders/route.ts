@@ -43,6 +43,13 @@ function startOfDay(dateValue = new Date()) {
   return date;
 }
 
+function getTomorrowEnd() {
+  const tomorrow = startOfDay();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(23, 59, 59, 999);
+  return tomorrow;
+}
+
 function getDaysLeft(dueDate: Date) {
   const today = startOfDay();
   const due = startOfDay(dueDate);
@@ -50,7 +57,7 @@ function getDaysLeft(dueDate: Date) {
   return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getReminderMessage({
+function getSmsMessage({
   loanType,
   amount,
   dueDate,
@@ -69,7 +76,11 @@ function getReminderMessage({
   });
 
   if (daysLeft === 1) {
-    return `Reminder: Your ${loanType} installment of Rs. ${formattedAmount} is due tomorrow (${formattedDate}). Please make the payment on time.`;
+    return buildInstallmentReminderSms({
+      loanType,
+      amount,
+      dueDate,
+    });
   }
 
   if (daysLeft < 0 && Math.abs(daysLeft) === 7) {
@@ -79,52 +90,97 @@ function getReminderMessage({
   if (daysLeft < 0) {
     return `Overdue Notice: Your ${loanType} installment of Rs. ${formattedAmount} is overdue by ${Math.abs(
       daysLeft
-    )} day(s). Please make the payment immediately.`;
+    )} day(s). Due date: ${formattedDate}. Please make the payment immediately.`;
   }
 
-  return buildInstallmentReminderSms({
-    loanType,
-    amount,
-    dueDate,
-  });
+  return `Reminder: Your ${loanType} installment of Rs. ${formattedAmount} is due on ${formattedDate}.`;
 }
 
-async function sendReminderNotification({
+async function addPaymentNotification({
   installment,
   user,
   loan,
-  smsMessage,
+  title,
+  message,
+  priority,
+  currentUserId,
   smsSent,
   smsResultMessage,
-  currentUserId,
-  title,
-  priority,
 }: {
   installment: ReminderInstallment;
   user: PopulatedUser;
   loan: PopulatedLoan;
-  smsMessage: string;
+  title: string;
+  message: string;
+  priority: "low" | "normal" | "high";
+  currentUserId: string;
   smsSent: boolean;
   smsResultMessage: string;
-  currentUserId: string;
-  title: string;
-priority: "low" | "normal" | "high";}) {
+}) {
   await createNotification({
     userId: user._id,
     type: "payment",
     title,
-    message: smsMessage,
+    message,
     priority,
     link: "/dashboard/installments",
     metadata: {
       installmentId: installment._id.toString(),
-      loanId: loan?._id?.toString(),
+      loanId: loan._id.toString(),
       dueDate: installment.dueDate,
       smsSent,
       smsMessage: smsResultMessage,
       triggeredBy: currentUserId,
     },
   });
+}
+
+export async function GET() {
+  try {
+    await dbConnect();
+
+    const installments = await Installment.find({
+      status: { $in: ["pending", "overdue"] },
+      isDeleted: { $ne: true },
+    })
+      .populate("userId", "fullName phone")
+      .populate("loanId", "loanType remainingBalance")
+      .sort({ dueDate: 1 })
+      .lean<ReminderInstallment[]>();
+
+    return NextResponse.json({
+      success: true,
+      message: "Reminder API is working. Use POST to process reminders.",
+      count: installments.length,
+      installments: installments.map((item) => ({
+        installmentId: item._id.toString(),
+        memberName: item.userId?.fullName || "",
+        phone: item.userId?.phone || "",
+        loanType: item.loanId?.loanType || "",
+        amount: item.amount || 0,
+        dueDate: item.dueDate,
+        status: item.status,
+        daysLeft: getDaysLeft(new Date(item.dueDate)),
+        reminderSent: item.reminderSent || false,
+        overdueReminderSentCount: item.overdueReminderSentCount || 0,
+        finalWarningSent: item.finalWarningSent || false,
+        penaltyApplied: item.penaltyApplied || false,
+      })),
+    });
+  } catch (error) {
+    console.error("GET_INSTALLMENT_REMINDER_CHECK_ERROR", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to check reminder API.",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST() {
@@ -147,27 +203,25 @@ export async function POST() {
       );
     }
 
-    const today = startOfDay();
-
     const installments = await Installment.find({
       status: { $in: ["pending", "overdue"] },
       isDeleted: { $ne: true },
-      dueDate: {
-        $lte: new Date(today.getTime() + 24 * 60 * 60 * 1000 + 86399999),
-      },
+      dueDate: { $lte: getTomorrowEnd() },
     })
       .populate("userId", "fullName phone")
       .populate("loanId", "loanType remainingBalance")
+      .sort({ dueDate: 1 })
       .lean<ReminderInstallment[]>();
 
     const results = await Promise.all(
       installments.map(async (installment) => {
         const user = installment.userId;
         const loan = installment.loanId;
-        const loanType = loan?.loanType || "Loan";
-        const phone = user?.phone || "";
         const daysLeft = getDaysLeft(new Date(installment.dueDate));
         const overdueDays = daysLeft < 0 ? Math.abs(daysLeft) : 0;
+
+        const loanType = loan?.loanType || "Loan";
+        const phone = user?.phone || "";
 
         if (!user?._id || !loan?._id) {
           return {
@@ -181,42 +235,16 @@ export async function POST() {
           };
         }
 
-        if (daysLeft > 1) {
-          return {
-            installmentId: installment._id.toString(),
-            userId: user._id.toString(),
-            memberName: user.fullName || "",
-            phone,
-            action: "skipped",
-            smsSent: false,
-            penaltyApplied: false,
-            message: "Installment is not in reminder range.",
-          };
-        }
-
-        if (daysLeft === 1 && installment.reminderSent) {
-          return {
-            installmentId: installment._id.toString(),
-            userId: user._id.toString(),
-            memberName: user.fullName || "",
-            phone,
-            action: "skipped",
-            smsSent: false,
-            penaltyApplied: false,
-            message: "One-day reminder already sent.",
-          };
-        }
-
         if (daysLeft < 0 && installment.status !== "overdue") {
           await Installment.findByIdAndUpdate(installment._id, {
-            $set: {
-              status: "overdue",
-            },
+            $set: { status: "overdue" },
           });
         }
 
         if (overdueDays >= 8 && !installment.penaltyApplied) {
-          const penaltyAmount = Math.round(Number(installment.amount || 0) * PENALTY_RATE);
+          const penaltyAmount = Math.round(
+            Number(installment.amount || 0) * PENALTY_RATE
+          );
 
           await Installment.findByIdAndUpdate(installment._id, {
             $set: {
@@ -270,8 +298,11 @@ export async function POST() {
           };
         }
 
-        const shouldSendOneDayReminder = daysLeft === 1 && !installment.reminderSent;
+        const shouldSendOneDayReminder =
+          daysLeft === 1 && !installment.reminderSent;
+
         const shouldSendOverdueReminder = overdueDays >= 1 && overdueDays <= 6;
+
         const shouldSendFinalWarning =
           overdueDays === 7 && !installment.finalWarningSent;
 
@@ -305,7 +336,7 @@ export async function POST() {
           };
         }
 
-        const smsMessage = getReminderMessage({
+        const smsMessage = getSmsMessage({
           loanType,
           amount: installment.amount,
           dueDate: new Date(installment.dueDate),
@@ -341,20 +372,21 @@ export async function POST() {
           $set: updateData,
         });
 
-        await sendReminderNotification({
+        await addPaymentNotification({
           installment,
           user,
           loan,
-          smsMessage,
-          smsSent: smsResult.success,
-          smsResultMessage: smsResult.message,
-          currentUserId: currentUser._id,
           title: shouldSendFinalWarning
             ? "Final Installment Warning"
             : daysLeft < 0
               ? "Overdue Installment Reminder"
               : "Installment Reminder",
-priority: daysLeft < 0 ? "high" : "normal",        });
+          message: smsMessage,
+          priority: daysLeft < 0 ? "high" : "normal",
+          currentUserId: currentUser._id,
+          smsSent: smsResult.success,
+          smsResultMessage: smsResult.message,
+        });
 
         return {
           installmentId: installment._id.toString(),
@@ -379,7 +411,11 @@ priority: daysLeft < 0 ? "high" : "normal",        });
       totalFound: installments.length,
       sentCount: results.filter((item) => item.smsSent).length,
       failedCount: results.filter(
-        (item) => item.action === "failed" || (!item.smsSent && item.action !== "skipped")
+        (item) =>
+          item.action === "failed" ||
+          (!item.smsSent &&
+            item.action !== "skipped" &&
+            item.action !== "penalty_applied")
       ).length,
       penaltyCount: results.filter((item) => item.penaltyApplied).length,
       results,

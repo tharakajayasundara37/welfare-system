@@ -68,6 +68,46 @@ const installmentSchema = new Schema(
       default: null,
     },
 
+    overdueReminderSentCount: {
+      type: Number,
+      default: 0,
+    },
+
+    lastOverdueReminderSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    finalWarningSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    finalWarningSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    penaltyApplied: {
+      type: Boolean,
+      default: false,
+    },
+
+    penaltyAppliedAt: {
+      type: Date,
+      default: null,
+    },
+
+    penaltyAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    penaltyRate: {
+      type: Number,
+      default: 0,
+    },
+
     isDeleted: {
       type: Boolean,
       default: false,
@@ -95,6 +135,21 @@ installmentSchema.index({
 
 installmentSchema.index({
   status: 1,
+  dueDate: 1,
+});
+
+installmentSchema.index({
+  reminderSent: 1,
+  dueDate: 1,
+});
+
+installmentSchema.index({
+  finalWarningSent: 1,
+  dueDate: 1,
+});
+
+installmentSchema.index({
+  penaltyApplied: 1,
   dueDate: 1,
 });
 

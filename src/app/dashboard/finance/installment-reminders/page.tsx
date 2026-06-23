@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Loader2,
   MessageSquareText,
+  ShieldAlert,
   XCircle,
 } from "lucide-react";
 
@@ -14,10 +15,13 @@ import { Card, CardContent } from "@/components/ui/card";
 
 type ReminderResult = {
   installmentId: string;
-  userId: string;
+  userId?: string;
   memberName: string;
   phone: string;
+  action: string;
   smsSent: boolean;
+  penaltyApplied: boolean;
+  penaltyAmount?: number;
   message: string;
 };
 
@@ -27,6 +31,7 @@ type ApiResponse = {
   totalFound?: number;
   sentCount?: number;
   failedCount?: number;
+  penaltyCount?: number;
   results?: ReminderResult[];
 };
 
@@ -41,21 +46,25 @@ export default function FinanceInstallmentRemindersPage() {
       setError("");
       setResponse(null);
 
-      const res = await fetch("/api/finance/installment-reminders/run", {
+      const res = await fetch("/api/finance/installment-reminders", {
         method: "POST",
         cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
       const data = (await res.json()) as ApiResponse;
 
-      if (!data.success) {
-        setError(data.message || "Failed to send reminders.");
+      if (!res.ok || !data.success) {
+        setError(data.message || "Failed to process reminders.");
         return;
       }
 
       setResponse(data);
-    } catch {
-      setError("Something went wrong while sending reminders.");
+    } catch (err) {
+      console.error("SEND_REMINDERS_UI_ERROR", err);
+      setError("Something went wrong while processing reminders.");
     } finally {
       setSending(false);
     }
@@ -75,12 +84,14 @@ export default function FinanceInstallmentRemindersPage() {
                 Installment SMS Reminders
               </h1>
               <p className="mt-1 text-sm text-[#6b5e54]">
-                Send SMS reminders for installments due tomorrow.
+                Manual run for due tomorrow reminders, overdue reminders, final
+                warnings and automatic penalties.
               </p>
             </div>
           </div>
 
           <Button
+            type="button"
             onClick={sendReminders}
             disabled={sending}
             className="mt-7 rounded-2xl bg-[#9b6f45] px-6 text-white hover:bg-[#835c38]"
@@ -90,7 +101,7 @@ export default function FinanceInstallmentRemindersPage() {
             ) : (
               <MessageSquareText size={18} className="mr-2" />
             )}
-            {sending ? "Sending Reminders..." : "Send Reminders Now"}
+            {sending ? "Processing..." : "Run Reminders Now"}
           </Button>
         </CardContent>
       </Card>
@@ -102,7 +113,7 @@ export default function FinanceInstallmentRemindersPage() {
       )}
 
       {response && (
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
           <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
             <CardContent className="p-5">
               <p className="text-sm text-[#6b5e54]">Found</p>
@@ -114,7 +125,7 @@ export default function FinanceInstallmentRemindersPage() {
 
           <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
             <CardContent className="p-5">
-              <p className="text-sm text-[#6b5e54]">Sent</p>
+              <p className="text-sm text-[#6b5e54]">SMS Sent</p>
               <h2 className="mt-2 flex items-center gap-2 text-3xl font-extrabold text-green-700">
                 <CheckCircle2 size={26} />
                 {response.sentCount || 0}
@@ -131,6 +142,16 @@ export default function FinanceInstallmentRemindersPage() {
               </h2>
             </CardContent>
           </Card>
+
+          <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
+            <CardContent className="p-5">
+              <p className="text-sm text-[#6b5e54]">Penalties</p>
+              <h2 className="mt-2 flex items-center gap-2 text-3xl font-extrabold text-orange-700">
+                <ShieldAlert size={26} />
+                {response.penaltyCount || 0}
+              </h2>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -140,9 +161,9 @@ export default function FinanceInstallmentRemindersPage() {
             <h2 className="mb-4 text-xl font-extrabold">Results</h2>
 
             <div className="space-y-3">
-              {response.results.map((item) => (
+              {response.results.map((item, index) => (
                 <div
-                  key={item.installmentId}
+                  key={`${item.installmentId}-${index}`}
                   className="rounded-2xl border border-[#d9c8b8] bg-[#fffaf3] p-4"
                 >
                   <p className="text-sm font-bold">
@@ -151,12 +172,23 @@ export default function FinanceInstallmentRemindersPage() {
                   <p className="text-sm font-bold">
                     Phone: {item.phone || "-"}
                   </p>
+                  <p className="text-sm font-bold capitalize">
+                    Action: {item.action.replaceAll("_", " ")}
+                  </p>
+
+                  {item.penaltyApplied ? (
+                    <p className="mt-1 text-sm font-semibold text-orange-700">
+                      Penalty Applied: Rs.{" "}
+                      {Number(item.penaltyAmount || 0).toLocaleString("en-LK")}
+                    </p>
+                  ) : null}
+
                   <p
                     className={`mt-1 text-sm font-semibold ${
-                      item.smsSent ? "text-green-700" : "text-red-700"
+                      item.smsSent ? "text-green-700" : "text-[#6b5e54]"
                     }`}
                   >
-                    {item.smsSent ? "Sent" : "Failed"} - {item.message}
+                    {item.smsSent ? "SMS Sent" : "No SMS"} - {item.message}
                   </p>
                 </div>
               ))}

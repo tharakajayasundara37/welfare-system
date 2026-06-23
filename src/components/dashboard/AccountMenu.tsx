@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, Settings, User } from "lucide-react";
 
 type AccountMenuUser = {
@@ -9,6 +10,7 @@ type AccountMenuUser = {
   email: string;
   role: string;
   accountStatus: string;
+  profileImage?: string;
 };
 
 function formatRole(role?: string) {
@@ -42,14 +44,75 @@ function getInitials(nameOrEmail: string) {
   return parts.join("").slice(0, 2).toUpperCase();
 }
 
+function Avatar({
+  src,
+  initials,
+  displayName,
+  size = "large",
+}: {
+  src?: string;
+  initials: string;
+  displayName: string;
+  size?: "small" | "large";
+}) {
+  const sizeClass =
+    size === "large"
+      ? "h-[62px] w-[62px] rounded-[22px]"
+      : "h-12 w-12 rounded-2xl";
+
+  if (src) {
+    return (
+      <div
+        className={`${sizeClass} relative shrink-0 overflow-hidden border border-[#d8ad80]/45 bg-[#f1e5d8] shadow-[0_14px_35px_rgba(155,111,69,0.28)]`}
+      >
+        <Image
+          src={src}
+          alt={displayName}
+          fill
+          sizes={size === "large" ? "62px" : "48px"}
+          className="object-cover"
+          priority={size === "large"}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClass} flex shrink-0 items-center justify-center border border-[#d8ad80]/45 bg-gradient-to-br from-[#d8ad80] to-[#9b6f45] text-sm font-extrabold text-white shadow-[0_14px_35px_rgba(155,111,69,0.28)]`}
+    >
+      {initials}
+    </div>
+  );
+}
+
 export default function AccountMenu({ user }: { user: AccountMenuUser }) {
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const displayName = user.fullName || user.email || "User";
   const roleText = formatRole(user.role);
   const initials = getInitials(displayName);
+  const profileImage = String(user.profileImage || "").trim();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!menuRef.current) return;
+
+      if (!menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   async function handleLogout() {
     try {
@@ -69,32 +132,35 @@ export default function AccountMenu({ user }: { user: AccountMenuUser }) {
     }
   }
 
+  function goTo(path: string) {
+    setOpen(false);
+    router.push(path);
+  }
+
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="flex items-center gap-4 rounded-[24px] border border-[#d9c8b8] bg-[#fbf7ef]/90 px-4 py-3 text-[#2b241f] shadow-[0_18px_55px_rgba(44,36,31,0.14)] backdrop-blur-2xl transition hover:border-[#9b6f45]/40 hover:bg-[#fffaf3]"
       >
-        <div className="flex h-13 w-13 items-center justify-center rounded-2xl border border-[#d8ad80]/45 bg-gradient-to-br from-[#d8ad80] to-[#9b6f45] text-sm font-extrabold text-white shadow-[0_14px_35px_rgba(155,111,69,0.28)]">
-          {initials}
-        </div>
+        <Avatar
+          src={profileImage}
+          initials={initials}
+          displayName={displayName}
+        />
 
-        <div className="hidden min-w-[140px] text-left sm:block">
-          <p className="max-w-[160px] truncate text-sm font-extrabold text-[#2b241f]">
+        <div className="hidden min-w-[170px] text-left sm:block">
+          <p className="max-w-[190px] truncate text-sm font-extrabold text-[#2b241f]">
             {displayName}
           </p>
 
-          <p className="mt-1 text-xs font-bold text-[#9b6f45]">
-            {roleText}
-          </p>
+          <p className="mt-1 text-xs font-bold text-[#9b6f45]">{roleText}</p>
         </div>
 
         <ChevronDown
           size={17}
-          className={`text-[#9b6f45] transition ${
-            open ? "rotate-180" : ""
-          }`}
+          className={`text-[#9b6f45] transition ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -102,9 +168,12 @@ export default function AccountMenu({ user }: { user: AccountMenuUser }) {
         <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-72 overflow-hidden rounded-[24px] border border-[#d9c8b8] bg-[#fbf7ef] text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.22)]">
           <div className="border-b border-[#d9c8b8] bg-[#f8f1e8] p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d8ad80]/45 bg-gradient-to-br from-[#d8ad80] to-[#9b6f45] text-sm font-extrabold text-white">
-                {initials}
-              </div>
+              <Avatar
+                src={profileImage}
+                initials={initials}
+                displayName={displayName}
+                size="small"
+              />
 
               <div className="min-w-0">
                 <p className="truncate text-sm font-extrabold text-[#2b241f]">
@@ -125,6 +194,7 @@ export default function AccountMenu({ user }: { user: AccountMenuUser }) {
           <div className="p-2">
             <button
               type="button"
+              onClick={() => goTo("/dashboard/profile")}
               className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold text-[#2b241f] transition hover:bg-[#f1e5d8]"
             >
               <User size={17} className="text-[#9b6f45]" />
@@ -133,6 +203,7 @@ export default function AccountMenu({ user }: { user: AccountMenuUser }) {
 
             <button
               type="button"
+              onClick={() => goTo("/dashboard/settings")}
               className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold text-[#2b241f] transition hover:bg-[#f1e5d8]"
             >
               <Settings size={17} className="text-[#9b6f45]" />
