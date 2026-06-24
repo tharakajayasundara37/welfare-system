@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
+  CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
@@ -14,9 +15,10 @@ import {
   FileCheck,
   Landmark,
   Loader2,
+  MapPin,
+  Megaphone,
   Settings,
   TrendingUp,
-  Users,
   WalletCards,
 } from "lucide-react";
 
@@ -72,7 +74,18 @@ interface RecentApplication {
   nextEMIDueDate: string | null;
   createdAt: string | null;
 }
-
+interface DashboardMeeting {
+  id: string;
+  title: string;
+  reason: string;
+  description?: string;
+  venue: string;
+  meetingDate: string;
+  meetingTime: string;
+  meetingAt: string | Date | null;
+  priority: string;
+  targetAudience: string;
+}
 interface DashboardStats {
   totalLoans: number;
   activeLoans: number;
@@ -93,9 +106,9 @@ interface MemberDashboardResponse {
   member?: MemberInfo;
   stats?: MemberStats;
   recentApplications?: RecentApplication[];
+  meeting?: DashboardMeeting | null;
   message?: string;
 }
-
 const defaultStats: DashboardStats = {
   totalLoans: 0,
   activeLoans: 0,
@@ -318,6 +331,7 @@ export default function MemberDashboardPage() {
   const [recentApplications, setRecentApplications] = useState<
     RecentApplication[]
   >([]);
+  const [meeting, setMeeting] = useState<DashboardMeeting | null>(null);
   const [todayText, setTodayText] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -347,6 +361,7 @@ export default function MemberDashboardPage() {
 
         setMember(result.member || null);
         setRecentApplications(applications);
+        setMeeting(result.meeting || null);
 
         setStats({
           ...defaultStats,
@@ -476,6 +491,126 @@ export default function MemberDashboardPage() {
           </div>
         </section>
 
+{meeting && (
+  <section className="relative overflow-hidden rounded-[34px] border border-[#d9c8b8] bg-[#f7f1ea] shadow-[0_30px_100px_rgba(44,36,31,0.12)]">
+    <div className="grid lg:grid-cols-[1.2fr_0.8fr]">
+      {/* LEFT SIDE */}
+      <div className="relative overflow-hidden bg-[#f3dfcd] p-8 text-[#2c241f]">
+        <div className="absolute left-5 top-5 h-3 w-3 bg-[#d8c0aa]" />
+        <div className="absolute right-5 top-5 h-3 w-3 bg-[#d8c0aa]" />
+        <div className="absolute bottom-5 left-5 h-3 w-3 bg-[#d8c0aa]" />
+
+        <div className="inline-flex items-center gap-2 rounded-xl bg-[#4b2d27] px-4 py-2 text-xs font-black uppercase text-[#f7f1ea]">
+          <Megaphone size={15} />
+          Meeting Notice
+        </div>
+
+        <p className="mt-8 text-sm font-black uppercase tracking-[0.45em] text-[#6b453d]">
+          Welfare Society
+        </p>
+
+        <h2 className="mt-6 text-6xl font-black uppercase leading-none tracking-tight text-[#4b2d27] md:text-7xl">
+          {meeting.title}
+        </h2>
+
+        <p className="mt-4 max-w-xl text-base font-black leading-7 text-[#4b2d27]">
+          {meeting.reason}
+        </p>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-[#d8c0aa] bg-[#ead6c4] p-4">
+            <div className="flex items-center gap-3">
+              <CalendarClock size={28} className="text-[#6b453d]" />
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
+                  Date
+                </p>
+
+                <p className="text-xl font-black text-[#2c241f]">
+                  {meeting.meetingDate}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#d8c0aa] bg-[#ead6c4] p-4">
+            <div className="flex items-center gap-3">
+              <Clock3 size={28} className="text-[#6b453d]" />
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
+                  Time
+                </p>
+
+                <p className="text-xl font-black text-[#2c241f]">
+                  {meeting.meetingTime}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-start gap-3">
+          <MapPin size={24} className="mt-1 text-[#6b453d]" />
+
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
+              Venue
+            </p>
+
+            <p className="text-xl font-black text-[#2c241f]">
+              {meeting.venue}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT SIDE */}
+      <div className="relative flex items-center justify-center bg-[#f7f1ea] p-8">
+        <div className="relative w-full max-w-sm border-[3px] border-[#4b2d27] bg-[#f3dfcd] p-8 text-center shadow-xl">
+          <div className="absolute -left-3 -top-3 h-6 w-6 bg-[#d8c0aa]" />
+          <div className="absolute -right-3 -top-3 h-6 w-6 bg-[#d8c0aa]" />
+          <div className="absolute -bottom-3 -left-3 h-6 w-6 bg-[#4b2d27]" />
+          <div className="absolute -bottom-3 -right-3 h-6 w-6 bg-[#4b2d27]" />
+
+          <p className="text-xs font-black uppercase tracking-[0.45em] text-[#4b2d27]">
+            Special Meeting
+          </p>
+
+          <div className="mt-6 bg-[#d8c0aa] p-5">
+            <h3 className="text-4xl font-black uppercase leading-none text-[#2c241f]">
+              {meeting.title}
+            </h3>
+          </div>
+
+          <div className="mt-8">
+            <CalendarClock
+              size={120}
+              className="mx-auto text-[#4b2d27]"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* BOTTOM BAR */}
+    <div className="flex flex-col gap-4 border-t border-[#d9c8b8] bg-[#f7f1ea] p-5 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-wrap gap-6 text-base font-black text-[#4b2d27]">
+        <span>{meeting.meetingDate}</span>
+        <span>{meeting.meetingTime}</span>
+        <span>{meeting.venue}</span>
+      </div>
+
+      <Link
+        href={`/dashboard/meeting-notices/${meeting.id}`}
+        className="inline-flex items-center justify-center rounded-2xl bg-[#4b2d27] px-6 py-3 text-base font-black uppercase tracking-[0.15em] text-white transition hover:bg-[#6b453d]"
+      >
+        View Details →
+      </Link>
+    </div>
+  </section>
+)}
         <section className="relative grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total Loans"

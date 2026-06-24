@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import Loan from "@/models/Loan";
+import MeetingNotice from "@/models/MeetingNotice";
 
 type RawLoan = {
   _id: {
@@ -19,6 +20,21 @@ type RawLoan = {
   monthlyInstallment?: number;
   nextEMIDueDate?: string | Date;
   createdAt?: string | Date;
+};
+
+type RawMeeting = {
+  _id: {
+    toString: () => string;
+  };
+  title?: string;
+  reason?: string;
+  description?: string;
+  venue?: string;
+  meetingDate?: string;
+  meetingTime?: string;
+  meetingAt?: string | Date;
+  priority?: string;
+  targetAudience?: string;
 };
 
 function formatStatus(status: string) {
@@ -68,49 +84,67 @@ export async function GET() {
 
     const userId = currentUser._id;
 
-    const [totalLoans, pendingLoans, approvedLoans, rejectedLoans, recentLoans] =
-      await Promise.all([
-        Loan.countDocuments({ userId }),
+    const [
+      totalLoans,
+      pendingLoans,
+      approvedLoans,
+      rejectedLoans,
+      recentLoans,
+      upcomingMeeting,
+    ] = await Promise.all([
+      Loan.countDocuments({ userId }),
 
-        Loan.countDocuments({
-          userId,
-          status: {
-            $in: [
-              "pending",
-              "pending_officer",
-              "pending_admin",
-              "pending_finance",
-              "pending_review",
-            ],
-          },
-        }),
+      Loan.countDocuments({
+        userId,
+        status: {
+          $in: [
+            "pending",
+            "pending_officer",
+            "pending_admin",
+            "pending_finance",
+            "pending_review",
+          ],
+        },
+      }),
 
-        Loan.countDocuments({
-          userId,
-          status: {
-            $in: [
-              "approved",
-              "officer_approved",
-              "admin_approved",
-              "pending_admin",
-              "pending_finance",
-              "disbursed",
-            ],
-          },
-        }),
+      Loan.countDocuments({
+        userId,
+        status: {
+          $in: [
+            "approved",
+            "officer_approved",
+            "admin_approved",
+            "pending_admin",
+            "pending_finance",
+            "disbursed",
+          ],
+        },
+      }),
 
-        Loan.countDocuments({
-          userId,
-          status: {
-            $in: ["rejected", "officer_rejected", "admin_rejected"],
-          },
-        }),
+      Loan.countDocuments({
+        userId,
+        status: {
+          $in: ["rejected", "officer_rejected", "admin_rejected"],
+        },
+      }),
 
-        Loan.find({ userId })
-          .sort({ createdAt: -1 })
-          .limit(5)
-          .lean<RawLoan[]>(),
-      ]);
+      Loan.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean<RawLoan[]>(),
+
+      MeetingNotice.findOne({
+        status: "active",
+        isDeleted: { $ne: true },
+        meetingAt: { $gte: new Date() },
+        $or: [
+          { targetAudience: "all_members" },
+          { targetAudience: "active_members" },
+        ],
+      })
+        .sort({ meetingAt: 1 })
+        .lean<RawMeeting | null>(),
+    ]);
 
     const activeLoans = await Loan.countDocuments({
       userId,
@@ -159,6 +193,20 @@ export async function GET() {
           rejectedLoans,
         },
         recentApplications,
+        meeting: upcomingMeeting
+          ? {
+              id: upcomingMeeting._id.toString(),
+              title: upcomingMeeting.title || "Meeting Notice",
+              reason: upcomingMeeting.reason || "",
+              description: upcomingMeeting.description || "",
+              venue: upcomingMeeting.venue || "Main Hall",
+              meetingDate: upcomingMeeting.meetingDate || "",
+              meetingTime: upcomingMeeting.meetingTime || "",
+              meetingAt: upcomingMeeting.meetingAt || null,
+              priority: upcomingMeeting.priority || "normal",
+              targetAudience: upcomingMeeting.targetAudience || "all_members",
+            }
+          : null,
       },
       {
         status: 200,

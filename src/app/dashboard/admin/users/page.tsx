@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -590,13 +591,15 @@ export default function AdminUsersPage() {
                             <td className="px-5 py-4 text-center align-middle">
                               <div className="flex items-center justify-center gap-2">
                                 <Button
+                                  asChild
                                   size="sm"
                                   className="h-9 rounded-xl bg-[#2c241f] px-3 text-xs font-bold text-[#fbf7ef] shadow-lg shadow-[#2c241f]/20 transition hover:bg-[#9b6f45]"
                                 >
-                                  <Eye className="mr-1" size={15} />
-                                  View
+                                  <Link href={`/dashboard/admin/users/${member._id}`}>
+                                    <Eye className="mr-1" size={15} />
+                                    View
+                                  </Link>
                                 </Button>
-
                                 {member.accountStatus !== "active" && (
                                   <Button
                                     size="sm"
