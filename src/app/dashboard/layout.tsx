@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Roboto } from "next/font/google";
+import MobileDashboardMenu from "@/components/dashboard/MobileDashboardMenu";
 
 import {
   BarChart3,
@@ -439,14 +440,26 @@ export default async function DashboardLayout({
           <main className="dashboard-no-scrollbar h-screen flex-1 overflow-y-auto overflow-x-hidden bg-[var(--bg-primary,#eee6da)]">
             <div className="sticky top-0 z-40 border-b border-[#d9c8b8] bg-[var(--bg-card,#fbf7ef)]/75 px-4 py-3 backdrop-blur-2xl lg:px-6">
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.28em] text-[var(--theme-color,#9b6f45)]">
-                    {getRoleHeaderLabel(role)}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <MobileDashboardMenu
+                    menuItems={menuItems}
+                    roleHeaderLabel={getRoleHeaderLabel(role)}
+                    dashboardTitle={getDashboardTitle(role)}
+                    controlTitle={getControlTitle(role)}
+                    controlDescription={getControlDescription(role)}
+                    userName={currentUser?.fullName || currentUser?.email || "User"}
+                    userRole={formatDisplayRole(currentUser?.role)}
+                  />
 
-                  <h1 className="mt-1 text-lg font-extrabold text-[var(--text-primary,#2b241f)]">
-                    {getDashboardTitle(role)}
-                  </h1>
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.28em] text-[var(--theme-color,#9b6f45)]">
+                      {getRoleHeaderLabel(role)}
+                    </p>
+
+                    <h1 className="mt-1 text-lg font-extrabold text-[var(--text-primary,#2b241f)]">
+                      {getDashboardTitle(role)}
+                    </h1>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3">

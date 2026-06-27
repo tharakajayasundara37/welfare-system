@@ -12,7 +12,6 @@ interface MongooseCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var mongooseCache: MongooseCache | undefined;
 }
 
@@ -22,15 +21,17 @@ const cached = global.mongooseCache || {
 };
 
 async function dbConnect() {
-  if (cached.conn) {
-    return cached.conn;
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGODB_URI as string, {
+      bufferCommands: false,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+    });
   }
-if (!cached.promise) {
-  cached.promise = mongoose.connect(MONGODB_URI as string);
-}
 
   cached.conn = await cached.promise;
-
   global.mongooseCache = cached;
 
   return cached.conn;
