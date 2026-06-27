@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useForm } from "react-hook-form";
@@ -46,27 +45,13 @@ interface LoginResponse {
 }
 
 const accessCards = [
-  {
-    title: "Member",
-    description: "Apply and track welfare support",
-  },
-  {
-    title: "Officer",
-    description: "Verify applications and documents",
-  },
-  {
-    title: "Admin",
-    description: "Approve and monitor records",
-  },
-  {
-    title: "Finance",
-    description: "Manage disbursement and payments",
-  },
+  { title: "Member", description: "Apply and track welfare support" },
+  { title: "Officer", description: "Verify applications and documents" },
+  { title: "Admin", description: "Approve and monitor records" },
+  { title: "Finance", description: "Manage disbursement and payments" },
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -86,27 +71,14 @@ export default function LoginPage() {
   });
 
   const redirectByRole = (role?: string) => {
-    if (role === "admin") {
-      router.push("/dashboard/admin");
-      return;
-    }
+    let path = "/dashboard";
 
-    if (role === "welfare_officer") {
-      router.push("/dashboard/officer");
-      return;
-    }
+    if (role === "admin") path = "/dashboard/admin";
+    if (role === "welfare_officer") path = "/dashboard/officer";
+    if (role === "finance_officer") path = "/dashboard/finance";
+    if (role === "member") path = "/dashboard";
 
-    if (role === "finance_officer") {
-      router.push("/dashboard/finance");
-      return;
-    }
-
-    if (role === "member") {
-      router.push("/dashboard");
-      return;
-    }
-
-    router.push("/dashboard");
+    window.location.assign(path);
   };
 
   const onSubmit = async (data: LoginFormData) => {
@@ -146,7 +118,7 @@ export default function LoginPage() {
 
       window.setTimeout(() => {
         redirectByRole(result.user?.role);
-      }, 800);
+      }, 300);
     } catch (error) {
       console.error("LOGIN_ERROR", error);
       setMessage("Something went wrong while logging in");
@@ -157,7 +129,6 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#eee6da] text-[#2b241f]">
-      {/* Background */}
       <div className="absolute inset-0 grid lg:grid-cols-[48%_52%]">
         <div className="bg-[#eee6da]" />
 
@@ -179,7 +150,6 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute -left-44 top-0 h-[460px] w-[460px] rounded-full bg-[#c99b69]/25 blur-[140px]" />
       <div className="pointer-events-none absolute bottom-0 left-1/4 h-[380px] w-[380px] rounded-full bg-[#d8ad80]/25 blur-[130px]" />
 
-      {/* Header */}
       <header className="relative z-30">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between px-6 py-6 lg:px-14">
           <Link href="/" className="flex items-center gap-4">
@@ -216,9 +186,7 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* Main content */}
       <section className="relative z-20 mx-auto grid min-h-[calc(100vh-104px)] max-w-[1500px] items-center gap-10 px-6 pb-10 lg:grid-cols-[48%_52%] lg:px-14">
-        {/* Left framed content */}
         <div className="flex justify-center lg:justify-start">
           <div className="w-full max-w-[650px] rounded-[42px] border border-[#d9c8b8] bg-[#fbf7ef]/66 p-7 shadow-[0_35px_110px_rgba(44,36,31,0.14)] backdrop-blur-2xl md:p-9">
             <div className="inline-flex items-center gap-3 rounded-full border border-[#d9c8b8] bg-[#f8f1e8]/80 px-5 py-3 text-xs font-extrabold uppercase tracking-[0.35em] text-[#9b6f45]">
@@ -267,7 +235,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Right login card */}
         <div className="flex justify-center lg:justify-end">
           <div className="w-full max-w-[590px] rounded-[42px] border border-white/70 bg-[#fbf7ef]/94 p-7 shadow-[0_40px_130px_rgba(44,36,31,0.32)] backdrop-blur-2xl md:p-10">
             <div className="mx-auto mb-8 flex h-[74px] w-[74px] items-center justify-center rounded-full border border-[#d9c8b8] bg-[#f1e5d8] text-[#8a5f3c] shadow-[0_18px_50px_rgba(44,36,31,0.12)]">
