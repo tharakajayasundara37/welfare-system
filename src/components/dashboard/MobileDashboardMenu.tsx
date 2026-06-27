@@ -2,16 +2,69 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X, HandHeart } from "lucide-react";
+import {
+  BarChart3,
+  Bell,
+  ClipboardCheck,
+  CreditCard,
+  FileText,
+  HandHeart,
+  Landmark,
+  LayoutDashboard,
+  Megaphone,
+  Menu,
+  ReceiptText,
+  Settings,
+  UploadCloud,
+  UserCog,
+  Users,
+  WalletCards,
+  X,
+} from "lucide-react";
 
-interface MenuItem {
+type MobileIconKey =
+  | "dashboard"
+  | "users"
+  | "staff"
+  | "loan"
+  | "settings"
+  | "reports"
+  | "announcement"
+  | "grant"
+  | "document"
+  | "payment"
+  | "installment"
+  | "notification"
+  | "review"
+  | "disbursement"
+  | "history";
+
+interface MobileMenuItem {
   title: string;
   href: string;
-  icon: React.ElementType;
+  iconKey: MobileIconKey;
   iconColor: string;
   iconBg: string;
   hoverBg: string;
 }
+
+const iconMap = {
+  dashboard: LayoutDashboard,
+  users: Users,
+  staff: UserCog,
+  loan: Landmark,
+  settings: Settings,
+  reports: BarChart3,
+  announcement: Megaphone,
+  grant: HandHeart,
+  document: UploadCloud,
+  payment: CreditCard,
+  installment: CreditCard,
+  notification: Bell,
+  review: ClipboardCheck,
+  disbursement: WalletCards,
+  history: ReceiptText,
+};
 
 export default function MobileDashboardMenu({
   menuItems,
@@ -22,7 +75,7 @@ export default function MobileDashboardMenu({
   userName,
   userRole,
 }: {
-  menuItems: MenuItem[];
+  menuItems: MobileMenuItem[];
   roleHeaderLabel: string;
   dashboardTitle: string;
   controlTitle: string;
@@ -39,6 +92,7 @@ export default function MobileDashboardMenu({
         onClick={() => setOpen(true)}
         className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef] text-[#9b6f45] shadow-sm lg:hidden"
         aria-label="Open dashboard menu"
+        title="Open dashboard menu"
       >
         <Menu size={22} />
       </button>
@@ -49,7 +103,8 @@ export default function MobileDashboardMenu({
             type="button"
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-            aria-label="Close menu overlay"
+            aria-label="Close dashboard menu overlay"
+            title="Close dashboard menu overlay"
           />
 
           <aside className="dashboard-no-scrollbar relative z-10 h-full w-[86%] max-w-[340px] overflow-y-auto overflow-x-hidden border-r border-[#d8ad80]/18 bg-[#211b17] p-5 text-white shadow-[25px_0_100px_rgba(0,0,0,0.55)]">
@@ -67,6 +122,7 @@ export default function MobileDashboardMenu({
                     <h2 className="text-2xl font-extrabold text-white">
                       Welfare
                     </h2>
+
                     <p className="text-sm font-medium text-[#ead9c8]/70">
                       {dashboardTitle}
                     </p>
@@ -78,6 +134,7 @@ export default function MobileDashboardMenu({
                   onClick={() => setOpen(false)}
                   className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d8ad80]/20 bg-[#fbf7ef]/10 text-[#ead9c8]"
                   aria-label="Close dashboard menu"
+                  title="Close dashboard menu"
                 >
                   <X size={20} />
                 </button>
@@ -113,17 +170,17 @@ export default function MobileDashboardMenu({
 
               <nav className="space-y-2">
                 {menuItems.map((item) => {
-                  const Icon = item.icon;
+                  const Icon = iconMap[item.iconKey] || FileText;
 
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className={`group flex items-center gap-4 rounded-[20px] border border-transparent px-4 py-3 text-base font-semibold text-[#ead9c8]/82 transition hover:border-[#d8ad80]/22 hover:text-white ${item.hoverBg}`}
+                      className={`group flex items-center gap-4 rounded-[20px] border border-transparent px-4 py-3 text-base font-semibold text-[#ead9c8]/82 transition hover:border-[#d8ad80]/22 hover:text-white hover:shadow-[0_15px_45px_rgba(216,173,128,0.14)] ${item.hoverBg}`}
                     >
                       <span
-                        className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8ad80]/18 ${item.iconBg} ${item.iconColor}`}
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8ad80]/18 ${item.iconBg} ${item.iconColor} shadow-sm backdrop-blur-xl transition group-hover:border-[#d8ad80]/25 group-hover:bg-[#fbf7ef]/12 group-hover:text-white`}
                       >
                         <Icon size={18} />
                       </span>

@@ -336,6 +336,44 @@ function formatDisplayRole(role?: string) {
   return normalizeRole(role).replaceAll("_", " ");
 }
 
+type MobileIconKey =
+  | "dashboard"
+  | "users"
+  | "staff"
+  | "loan"
+  | "settings"
+  | "reports"
+  | "announcement"
+  | "grant"
+  | "document"
+  | "payment"
+  | "installment"
+  | "notification"
+  | "review"
+  | "disbursement"
+  | "history";
+
+function getMobileIconKey(href: string, title: string): MobileIconKey {
+  const text = `${href} ${title}`.toLowerCase();
+
+  if (text.includes("users") || text.includes("member")) return "users";
+  if (text.includes("staff")) return "staff";
+  if (text.includes("setting")) return "settings";
+  if (text.includes("report")) return "reports";
+  if (text.includes("meeting") || text.includes("announcement")) return "announcement";
+  if (text.includes("grant")) return "grant";
+  if (text.includes("document")) return "document";
+  if (text.includes("payment")) return "payment";
+  if (text.includes("installment")) return "installment";
+  if (text.includes("notification") || text.includes("sms")) return "notification";
+  if (text.includes("review")) return "review";
+  if (text.includes("disbursement")) return "disbursement";
+  if (text.includes("history")) return "history";
+  if (text.includes("loan")) return "loan";
+
+  return "dashboard";
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -346,6 +384,15 @@ export default async function DashboardLayout({
 
   const role = normalizeRole(currentUser?.role);
   const menuItems = getMenuByRole(role);
+
+  const mobileMenuItems = menuItems.map((item) => ({
+    title: item.title,
+    href: item.href,
+    iconKey: getMobileIconKey(item.href, item.title),
+    iconColor: item.iconColor,
+    iconBg: item.iconBg,
+    hoverBg: item.hoverBg,
+  }));
 
   const accountUser = {
     fullName: currentUser?.fullName || "",
@@ -442,7 +489,7 @@ export default async function DashboardLayout({
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <MobileDashboardMenu
-                    menuItems={menuItems}
+                    menuItems={mobileMenuItems}
                     roleHeaderLabel={getRoleHeaderLabel(role)}
                     dashboardTitle={getDashboardTitle(role)}
                     controlTitle={getControlTitle(role)}
