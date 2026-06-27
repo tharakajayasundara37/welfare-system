@@ -360,12 +360,16 @@ function getMobileIconKey(href: string, title: string): MobileIconKey {
   if (text.includes("staff")) return "staff";
   if (text.includes("setting")) return "settings";
   if (text.includes("report")) return "reports";
-  if (text.includes("meeting") || text.includes("announcement")) return "announcement";
+  if (text.includes("meeting") || text.includes("announcement")) {
+    return "announcement";
+  }
   if (text.includes("grant")) return "grant";
   if (text.includes("document")) return "document";
   if (text.includes("payment")) return "payment";
   if (text.includes("installment")) return "installment";
-  if (text.includes("notification") || text.includes("sms")) return "notification";
+  if (text.includes("notification") || text.includes("sms")) {
+    return "notification";
+  }
   if (text.includes("review")) return "review";
   if (text.includes("disbursement")) return "disbursement";
   if (text.includes("history")) return "history";
@@ -485,9 +489,9 @@ export default async function DashboardLayout({
           </aside>
 
           <main className="dashboard-no-scrollbar h-screen flex-1 overflow-y-auto overflow-x-hidden bg-[var(--bg-primary,#eee6da)]">
-            <div className="sticky top-0 z-40 border-b border-[#d9c8b8] bg-[var(--bg-card,#fbf7ef)]/75 px-4 py-3 backdrop-blur-2xl lg:px-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
+            <div className="sticky top-0 z-40 border-b border-[#d9c8b8] bg-[var(--bg-card,#fbf7ef)]/75 px-3 py-3 backdrop-blur-2xl sm:px-4 lg:px-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <MobileDashboardMenu
                     menuItems={mobileMenuItems}
                     roleHeaderLabel={getRoleHeaderLabel(role)}
@@ -498,18 +502,18 @@ export default async function DashboardLayout({
                     userRole={formatDisplayRole(currentUser?.role)}
                   />
 
-                  <div>
-                    <p className="text-xs font-extrabold uppercase tracking-[0.28em] text-[var(--theme-color,#9b6f45)]">
+                  <div className="min-w-0">
+                    <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.2em] text-[var(--theme-color,#9b6f45)] sm:text-xs sm:tracking-[0.28em]">
                       {getRoleHeaderLabel(role)}
                     </p>
 
-                    <h1 className="mt-1 text-lg font-extrabold text-[var(--text-primary,#2b241f)]">
+                    <h1 className="mt-1 truncate text-base font-extrabold text-[var(--text-primary,#2b241f)] sm:text-lg">
                       {getDashboardTitle(role)}
                     </h1>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                   <NotificationBell />
                   <AccountMenu user={accountUser} />
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   Bell,
@@ -85,115 +85,144 @@ export default function MobileDashboardMenu({
 }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef] text-[#9b6f45] shadow-sm lg:hidden"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef] text-[#9b6f45] shadow-sm transition hover:bg-white lg:hidden"
         aria-label="Open dashboard menu"
         title="Open dashboard menu"
       >
         <Menu size={22} />
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-[100] lg:hidden">
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-            aria-label="Close dashboard menu overlay"
-            title="Close dashboard menu overlay"
-          />
+      <div
+        className={`fixed inset-0 z-[9999] lg:hidden ${
+          open ? "pointer-events-auto visible" : "pointer-events-none invisible"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className={`absolute inset-0 bg-black/45 backdrop-blur-[2px] transition-opacity duration-300 ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+          aria-label="Close dashboard menu overlay"
+          title="Close dashboard menu overlay"
+        />
 
-          <aside className="dashboard-no-scrollbar relative z-10 h-full w-[86%] max-w-[340px] overflow-y-auto overflow-x-hidden border-r border-[#d8ad80]/18 bg-[#211b17] p-5 text-white shadow-[25px_0_100px_rgba(0,0,0,0.55)]">
-            <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#c99b69]/25 blur-[100px]" />
-            <div className="pointer-events-none absolute -right-28 top-40 h-80 w-80 rounded-full bg-[#d8ad80]/14 blur-[120px]" />
+        <aside
+          className={`dashboard-no-scrollbar absolute left-0 top-0 h-dvh w-[84%] max-w-[345px] overflow-y-auto overflow-x-hidden rounded-r-[30px] border-r border-[#d8ad80]/20 bg-[#211b17] p-5 text-white shadow-[24px_0_90px_rgba(0,0,0,0.58)] transition-transform duration-300 ease-out ${
+            open ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full bg-[#c99b69]/25 blur-[100px]" />
+          <div className="pointer-events-none absolute -right-28 top-40 h-80 w-80 rounded-full bg-[#d8ad80]/14 blur-[120px]" />
+          <div className="pointer-events-none absolute bottom-0 left-0 h-80 w-80 rounded-full bg-[#9b6f45]/18 blur-[120px]" />
 
-            <div className="relative z-10">
-              <div className="mb-7 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d8ad80]/25 bg-gradient-to-br from-[#d8ad80]/20 to-[#9b6f45]/18">
-                    <HandHeart size={24} className="text-[#d8ad80]" />
-                  </div>
-
-                  <div>
-                    <h2 className="text-2xl font-extrabold text-white">
-                      Welfare
-                    </h2>
-
-                    <p className="text-sm font-medium text-[#ead9c8]/70">
-                      {dashboardTitle}
-                    </p>
-                  </div>
+          <div className="relative z-10">
+            <div className="mb-7 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#d8ad80]/25 bg-gradient-to-br from-[#d8ad80]/20 to-[#9b6f45]/18 shadow-[0_0_45px_rgba(216,173,128,0.22)]">
+                  <HandHeart size={24} className="text-[#d8ad80]" />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#d8ad80]/20 bg-[#fbf7ef]/10 text-[#ead9c8]"
-                  aria-label="Close dashboard menu"
-                  title="Close dashboard menu"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-2xl font-extrabold tracking-tight text-white">
+                    Welfare
+                  </h2>
 
-              <div className="mb-7 rounded-[26px] border border-[#d8ad80]/25 bg-[#fbf7ef]/10 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-                <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-[#d8ad80]">
-                  {roleHeaderLabel}
-                </p>
-
-                <h3 className="mt-2 text-lg font-bold text-white">
-                  {controlTitle}
-                </h3>
-
-                <p className="mt-1 text-xs leading-5 text-[#ead9c8]/65">
-                  {controlDescription}
-                </p>
-
-                <div className="mt-4 rounded-2xl border border-[#d8ad80]/18 bg-[#2c241f]/55 p-3">
-                  <p className="text-xs font-semibold text-[#ead9c8]/60">
-                    Logged in as
-                  </p>
-
-                  <p className="mt-1 truncate text-sm font-bold text-white">
-                    {userName}
-                  </p>
-
-                  <p className="mt-1 text-xs capitalize text-[#d8ad80]">
-                    {userRole}
+                  <p className="truncate text-sm font-medium text-[#ead9c8]/70">
+                    {dashboardTitle}
                   </p>
                 </div>
               </div>
 
-              <nav className="space-y-2">
-                {menuItems.map((item) => {
-                  const Icon = iconMap[item.iconKey] || FileText;
-
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={`group flex items-center gap-4 rounded-[20px] border border-transparent px-4 py-3 text-base font-semibold text-[#ead9c8]/82 transition hover:border-[#d8ad80]/22 hover:text-white hover:shadow-[0_15px_45px_rgba(216,173,128,0.14)] ${item.hoverBg}`}
-                    >
-                      <span
-                        className={`flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d8ad80]/18 ${item.iconBg} ${item.iconColor} shadow-sm backdrop-blur-xl transition group-hover:border-[#d8ad80]/25 group-hover:bg-[#fbf7ef]/12 group-hover:text-white`}
-                      >
-                        <Icon size={18} />
-                      </span>
-
-                      <span>{item.title}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#d8ad80]/20 bg-[#fbf7ef]/10 text-[#ead9c8] transition hover:bg-[#fbf7ef]/15"
+                aria-label="Close dashboard menu"
+                title="Close dashboard menu"
+              >
+                <X size={20} />
+              </button>
             </div>
-          </aside>
-        </div>
-      )}
+
+            <div className="mb-7 rounded-[26px] border border-[#d8ad80]/25 bg-[#fbf7ef]/10 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+              <p className="text-xs font-extrabold uppercase tracking-[0.24em] text-[#d8ad80]">
+                {roleHeaderLabel}
+              </p>
+
+              <h3 className="mt-2 text-lg font-bold text-white">
+                {controlTitle}
+              </h3>
+
+              <p className="mt-1 text-xs leading-5 text-[#ead9c8]/65">
+                {controlDescription}
+              </p>
+
+              <div className="mt-4 rounded-2xl border border-[#d8ad80]/18 bg-[#2c241f]/55 p-3">
+                <p className="text-xs font-semibold text-[#ead9c8]/60">
+                  Logged in as
+                </p>
+
+                <p className="mt-1 truncate text-sm font-bold text-white">
+                  {userName}
+                </p>
+
+                <p className="mt-1 text-xs capitalize text-[#d8ad80]">
+                  {userRole}
+                </p>
+              </div>
+            </div>
+
+            <nav className="space-y-2 pb-8">
+              {menuItems.map((item) => {
+                const Icon = iconMap[item.iconKey] || FileText;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={`group flex items-center gap-4 rounded-[20px] border border-transparent px-4 py-3 text-base font-semibold text-[#ead9c8]/82 transition hover:border-[#d8ad80]/22 hover:text-white hover:shadow-[0_15px_45px_rgba(216,173,128,0.14)] ${item.hoverBg}`}
+                  >
+                    <span
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#d8ad80]/18 ${item.iconBg} ${item.iconColor} shadow-sm backdrop-blur-xl transition group-hover:border-[#d8ad80]/25 group-hover:bg-[#fbf7ef]/12 group-hover:text-white`}
+                    >
+                      <Icon size={18} />
+                    </span>
+
+                    <span className="truncate">{item.title}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
