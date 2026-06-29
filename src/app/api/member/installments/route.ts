@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import Installment from "@/models/Installment";
 import Loan from "@/models/Loan";
 
+void Loan;
+
 export async function GET() {
   try {
     await dbConnect();
