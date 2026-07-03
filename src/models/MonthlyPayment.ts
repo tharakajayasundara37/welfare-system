@@ -102,6 +102,17 @@ const monthlyPaymentSchema = new Schema(
       type: Date,
       default: null,
     },
+
+    lastReminderSentAt: {
+    type: Date,
+    default: null,
+    },
+
+    reminderCount: {
+    type: Number,
+    default: 0,
+    },
+    
   },
   {
     timestamps: true,

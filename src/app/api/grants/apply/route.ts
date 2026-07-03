@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import path from "path";
-import { mkdir, writeFile } from "fs/promises";
-
 import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import Grant from "@/models/Grant";
@@ -9,12 +6,10 @@ import Grant from "@/models/Grant";
 type GrantDocument = {
   documentType: string;
   fileName: string;
-  fileUrl: string;
+  fileUrl: string; // මෙතනට සේව් වෙන්නේ Base64 Data URI එකක්
   mimeType: string;
   size: number;
 };
-
-const uploadDirectory = path.join(process.cwd(), "public", "uploads", "grants");
 
 async function generateGrantId() {
   const year = new Date().getFullYear();
@@ -41,23 +36,21 @@ async function generateGrantId() {
   return `GR-${year}-${String(nextNumber).padStart(4, "0")}`;
 }
 
-async function saveGrantFile(file: File, documentType: string) {
-  await mkdir(uploadDirectory, { recursive: true });
-
+// 🛠️ Vercel වල වැඩ කරන්න ෆයිල් එක Base64 කරලා Database එකටම දාන අලුත් Function එක
+async function convertFileToBase64(file: File, documentType: string): Promise<GrantDocument> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
-
-  const safeOriginalName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const fileName = `${Date.now()}-${documentType}-${safeOriginalName}`;
-  const filePath = path.join(uploadDirectory, fileName);
-
-  await writeFile(filePath, buffer);
+  
+  const mimeType = file.type || "application/octet-stream";
+  // කෙලින්ම Database එකේ store කරන්න Base64 string එකක් සාදා ගැනීම
+  const base64Data = buffer.toString("base64");
+  const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
   return {
     documentType,
     fileName: file.name,
-    fileUrl: `/uploads/grants/${fileName}`,
-    mimeType: file.type || "",
+    fileUrl: dataUrl, // Frontend එකේ <img> tag එකකට වුනත් direct දාන්න පුළුවන් string එකක්
+    mimeType,
     size: file.size || 0,
   };
 }
@@ -179,11 +172,13 @@ export async function POST(request: NextRequest) {
       "bankStatement",
     ];
 
+    // 🔄 ෆයිල් සේව් කරන ලූප් එක (අලුත් Base64 ක්‍රමයට)
     for (const key of documentKeys) {
       const file = formData.get(key);
 
       if (file instanceof File && file.size > 0) {
-        const savedFile = await saveGrantFile(file, key);
+        // ලෝකල් එකට ලියන්නේ නැතුව Base64 කරලා array එකට දානවා
+        const savedFile = await convertFileToBase64(file, key);
         documents.push(savedFile);
       }
     }
