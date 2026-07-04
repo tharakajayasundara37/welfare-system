@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob"; // Vercel Blob Import කිරීම
 
 import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
@@ -108,51 +107,6 @@ function getStringValue(formData: FormData, key: string) {
   }
 
   return value.trim();
-}
-
-function safeFileName(fileName: string) {
-  return fileName
-    .replaceAll(" ", "-")
-    .replace(/[^a-zA-Z0-9.\-_]/g, "")
-    .toLowerCase();
-}
-
-async function saveUploadedFile(
-  file: File,
-  loanId: string,
-  documentType: string
-) {
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const uploadDir = path.join(
-    process.cwd(),
-    "public",
-    "uploads",
-    "loan-documents",
-    loanId
-  );
-
-  await mkdir(uploadDir, { recursive: true });
-
-  const timestamp = Date.now();
-  const cleanedOriginalName = safeFileName(file.name);
-  const fileName = `${documentType}-${timestamp}-${cleanedOriginalName}`;
-
-  const storagePath = path.join(uploadDir, fileName);
-
-  await writeFile(storagePath, buffer);
-
-  const fileUrl = `/uploads/loan-documents/${loanId}/${fileName}`;
-
-  return {
-    fileName,
-    originalName: file.name,
-    fileUrl,
-    storagePath,
-    mimeType: file.type || "application/octet-stream",
-    size: file.size,
-  };
 }
 
 export async function POST(request: NextRequest) {
@@ -369,6 +323,7 @@ export async function POST(request: NextRequest) {
     const finalGuarantorPhone = isFuneralSupport ? "N/A" : guarantorPhone;
     const finalGuarantorNic = isFuneralSupport ? "N/A" : guarantorNic;
 
+    // 1. Loan Document එක Database එකේ මුලින් සෑදීම
     const loan = await Loan.create({
       userId: user._id,
 
@@ -427,15 +382,19 @@ export async function POST(request: NextRequest) {
 
     const createdDocuments = [];
 
+    // 2. Local FS එකට ලියනවා වෙනුවට කෙලින්ම Vercel Blob එකට Upload කිරීම
     for (const fileKey of requiredFiles) {
       const file = formData.get(fileKey);
 
       if (file instanceof File) {
-        const savedFile = await saveUploadedFile(
-          file,
-          loan._id.toString(),
-          fileKey
-        );
+        const timestamp = Date.now();
+        // Upload කරන path / identifier එක සැකසීම
+        const blobPath = `loan-documents/${loan._id.toString()}/${fileKey}-${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, "-")}`;
+
+        // Vercel blob put හරහා file එක cloud එකට යැවීම
+        const blob = await put(blobPath, file, {
+          access: "public",
+        });
 
         const document = await Document.create({
           userId: user._id,
@@ -444,12 +403,12 @@ export async function POST(request: NextRequest) {
           documentType: fileKey,
           label: activeDocumentLabels[fileKey],
 
-          fileName: savedFile.fileName,
-          originalName: savedFile.originalName,
-          fileUrl: savedFile.fileUrl,
-          storagePath: savedFile.storagePath,
-          mimeType: savedFile.mimeType,
-          size: savedFile.size,
+          fileName: `${fileKey}-${timestamp}`,
+          originalName: file.name,
+          fileUrl: blob.url, // Cloud HTTPS URL එක DB එකට වැටේ
+          storagePath: blob.url,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
 
           status: "uploaded",
           verifiedBy: null,

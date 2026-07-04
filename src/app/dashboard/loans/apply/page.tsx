@@ -370,7 +370,6 @@ export default function ApplyLoanPage() {
     return () => {
       window.clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const preview = useMemo(() => {
@@ -549,7 +548,6 @@ export default function ApplyLoanPage() {
         return `${item.label} is required`;
       }
     }
-
     return "";
   };
 
@@ -643,7 +641,6 @@ export default function ApplyLoanPage() {
       }
 
       const amountError = validateLoanAmount();
-
       if (amountError) {
         setIsSuccess(false);
         setMessage(amountError);
@@ -662,7 +659,6 @@ export default function ApplyLoanPage() {
       }
 
       const fileError = validateFiles();
-
       if (fileError) {
         setIsSuccess(false);
         setMessage(fileError);
@@ -720,7 +716,6 @@ export default function ApplyLoanPage() {
 
       for (const item of activeFileLabels) {
         const file = files[item.key];
-
         if (file) {
           formData.append(item.key, file);
         }
@@ -930,9 +925,7 @@ export default function ApplyLoanPage() {
                       type="number"
                       placeholder={`LKR ${loanSettings.minimumLoanAmount} - ${maxAllowedAmount}`}
                       value={requestedAmount}
-                      onChange={(event) =>
-                        setRequestedAmount(event.target.value)
-                      }
+                      onChange={(event) => setRequestedAmount(event.target.value)}
                       className={inputClassName}
                     />
                   </div>
@@ -968,9 +961,7 @@ export default function ApplyLoanPage() {
                       type="number"
                       placeholder="Example: 85000"
                       value={monthlyIncome}
-                      onChange={(event) =>
-                        setMonthlyIncome(event.target.value)
-                      }
+                      onChange={(event) => setMonthlyIncome(event.target.value)}
                       className={inputClassName}
                     />
                   </div>
