@@ -31,18 +31,13 @@ const funeralSupportDocumentLabels: Record<string, string> = {
 
 function calculateEMI(amount: number, annualInterestRate: number, months: number) {
   const monthlyRate = annualInterestRate / 12 / 100;
-
-  if (monthlyRate === 0) {
-    return amount / months;
-  }
-
+  if (monthlyRate === 0) return amount / months;
   const emi = (amount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
   return emi;
 }
 
 function calculateRiskLevel(monthlyIncome: number, monthlyInstallment: number) {
   const emiRatio = monthlyInstallment / monthlyIncome;
-
   if (emiRatio <= 0.3) return "low";
   if (emiRatio <= 0.5) return "medium";
   return "high";
@@ -50,7 +45,6 @@ function calculateRiskLevel(monthlyIncome: number, monthlyInstallment: number) {
 
 function calculateEligibilityStatus(monthlyIncome: number, monthlyInstallment: number) {
   const emiRatio = monthlyInstallment / monthlyIncome;
-
   if (emiRatio <= 0.4) return "eligible";
   if (emiRatio <= 0.6) return "review_required";
   return "not_eligible";
@@ -66,8 +60,7 @@ function getRecommendedPeriod(amount: number) {
 
 function getStringValue(formData: FormData, key: string) {
   const value = formData.get(key);
-  if (typeof value !== "string") return "";
-  return value.trim();
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function safeFileName(fileName: string) {
@@ -77,22 +70,18 @@ function safeFileName(fileName: string) {
     .toLowerCase();
 }
 
-// Vercel Blob හරහා file save කිරීම
 async function saveUploadedFile(file: File, loanId: string, documentType: string) {
   const timestamp = Date.now();
   const cleanedOriginalName = safeFileName(file.name);
-  // Blob storage path එක හදනවා
   const blobPath = `loan-documents/${loanId}/${documentType}-${timestamp}-${cleanedOriginalName}`;
 
-  const blob = await put(blobPath, file, {
-    access: "public",
-  });
+  const blob = await put(blobPath, file, { access: "private" });
 
   return {
     fileName: blob.pathname,
     originalName: file.name,
     fileUrl: blob.url,
-    storagePath: blob.url, // DB Compatibility එකට url එකම පාවිච්චි කරන්න
+    storagePath: blob.url,
     mimeType: file.type || "application/octet-stream",
     size: file.size,
   };
@@ -108,7 +97,6 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-
     const loanType = getStringValue(formData, "loanType");
     const requestedAmount = getStringValue(formData, "requestedAmount");
     const purpose = getStringValue(formData, "purpose");
@@ -165,27 +153,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const minimumLoanAmount = Number(settings.minimumLoanAmount ?? 10000);
-    const maximumLoanAmount = Number(settings.maximumLoanAmount ?? 500000);
-    const funeralSupportMaxAmount = Number(settings.funeralSupportMaxAmount ?? 100000);
-    const maxAllowedAmount = isFuneralSupport ? funeralSupportMaxAmount : maximumLoanAmount;
-
-    if (loanAmount < minimumLoanAmount || loanAmount > maxAllowedAmount) {
-      return NextResponse.json({ success: false, message: "Amount bounds error." }, { status: 400 });
-    }
-
-    if (!isFuneralSupport && !settings.allowedRepaymentPeriods.includes(periodMonths)) {
-      return NextResponse.json({ success: false, message: "Selected repayment period is not allowed." }, { status: 400 });
-    }
-
     const interestRate = isFuneralSupport ? 0 : Number(settings.interestRate);
     const monthlyInstallment = isFuneralSupport ? 0 : calculateEMI(loanAmount, interestRate, periodMonths);
     const roundedMonthlyInstallment = Number(monthlyInstallment.toFixed(2));
     const totalRepayment = isFuneralSupport ? 0 : Number((roundedMonthlyInstallment * periodMonths).toFixed(2));
-
-    const riskLevel = isFuneralSupport ? "support_grant" : calculateRiskLevel(income, roundedMonthlyInstallment);
-    const eligibilityStatus = isFuneralSupport ? "review_required" : calculateEligibilityStatus(income, roundedMonthlyInstallment);
-    const recommendedPeriodMonths = isFuneralSupport ? 0 : getRecommendedPeriod(loanAmount);
 
     const loan = await Loan.create({
       userId: user._id,
@@ -201,50 +172,34 @@ export async function POST(request: NextRequest) {
       guarantorPhone: isFuneralSupport ? "N/A" : guarantorPhone,
       guarantorNic: isFuneralSupport ? "N/A" : guarantorNic,
       systemInterestRate: interestRate,
-      recommendedPeriodMonths,
+      recommendedPeriodMonths: isFuneralSupport ? 0 : getRecommendedPeriod(loanAmount),
       preferredPeriodMonths: periodMonths,
-      approvedPeriodMonths: 0,
       monthlyInstallment: roundedMonthlyInstallment,
       totalRepayment,
       remainingBalance: isFuneralSupport ? 0 : totalRepayment,
-      riskLevel,
-      eligibilityStatus,
-      userAcceptanceStatus: "pending",
-      documentStatus: "pending_verification",
+      riskLevel: isFuneralSupport ? "support_grant" : calculateRiskLevel(income, roundedMonthlyInstallment),
+      eligibilityStatus: isFuneralSupport ? "review_required" : calculateEligibilityStatus(income, roundedMonthlyInstallment),
       status: "under_welfare_review",
     });
 
     const createdDocuments = [];
-
     for (const fileKey of requiredFiles) {
       const file = formData.get(fileKey);
       if (file instanceof File) {
         const savedFile = await saveUploadedFile(file, loan._id.toString(), fileKey);
-
         const document = await Document.create({
           userId: user._id,
           loanId: loan._id,
           documentType: fileKey,
           label: activeDocumentLabels[fileKey],
-          fileName: savedFile.fileName,
-          originalName: file.name,
           fileUrl: savedFile.fileUrl,
-          storagePath: savedFile.storagePath,
-          mimeType: savedFile.mimeType,
-          size: savedFile.size,
           status: "uploaded",
         });
         createdDocuments.push(document);
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      message: isFuneralSupport ? "Funeral support request submitted." : "Loan application submitted.",
-      loan,
-      documents: createdDocuments,
-    }, { status: 201 });
-
+    return NextResponse.json({ success: true, message: "Submitted successfully.", loan }, { status: 201 });
   } catch (error) {
     console.error("APPLY_LOAN_ERROR", error);
     return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
