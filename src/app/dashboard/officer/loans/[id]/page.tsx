@@ -199,7 +199,7 @@ function InfoCard({
 
         <h3 className="relative mt-2 text-2xl font-extrabold text-[#2b241f]">
           {value}
-        </h3>
+        </h3 >
 
         {subtitle ? (
           <p className="relative mt-2 text-sm text-[#79695d]">{subtitle}</p>
@@ -857,8 +857,9 @@ export default function OfficerLoanDetailPage() {
                           <td className="px-5 py-4">
                             <div className="flex flex-wrap gap-2">
                               {doc.fileUrl ? (
+                                // මෙතන තමයි ලින්ක් එක වෙනස් කළේ! 👇
                                 <a
-                                  href={doc.fileUrl}
+                                  href={`/api/documents/view?url=${encodeURIComponent(doc.fileUrl)}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
