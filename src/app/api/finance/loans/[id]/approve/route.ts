@@ -4,6 +4,8 @@ import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
 import Loan from "@/models/Loan";
+import Notification from "@/models/Notification"; // Notification model eka import kala
+import { sendSms, buildLoanIssuedSms } from "@/lib/sms/sendSms"; // SMS function eka import kala
 
 type Params = {
   id: string;
@@ -147,6 +149,56 @@ export async function PATCH(
       )
       .populate("financeOfficerId", "fullName email role employeeId")
       .lean();
+
+    // =========================================================================
+    // ALUTHIN ADD KARAPU KALLA: NOTIFICATION SAHA SMS YAWANA LOGIC EKA
+    // =========================================================================
+    if (updatedLoan && updatedLoan.userId) {
+      // TypeScript error nathi wenna type eka define karanawa
+      const memberData = updatedLoan.userId as { _id?: unknown; phone?: string };
+      const memberId = memberData._id?.toString();
+      const memberPhone = memberData.phone;
+      const loanTypeStr = updatedLoan.loanType || "Welfare Loan";
+
+      // 1. IN-APP NOTIFICATION EKA YAWANAWA
+      if (memberId) {
+        try {
+          await Notification.create({
+            userId: memberId,
+            type: "loan",
+            title: "Loan Disbursed",
+            message: `Your ${loanTypeStr} application has been approved and funds have been released by Finance.`,
+            isRead: false,
+          });
+        } catch (notiError) {
+          console.error("NOTIFICATION_SAVE_ERROR:", notiError);
+        }
+      }
+
+      // 2. REAL-TIME SMS EKA YAWANAWA
+      if (memberPhone) {
+        try {
+          const smsMessage = buildLoanIssuedSms({
+            loanType: loanTypeStr,
+            amount: approvedAmount,
+          });
+
+          const smsResult = await sendSms({
+            to: memberPhone,
+            message: smsMessage,
+          });
+
+          if (!smsResult.success) {
+            console.error("REALTIME_SMS_SENDING_FAILED:", smsResult.message);
+          } else {
+            console.log("REALTIME_SMS_SENT_SUCCESSFULLY_TO:", smsResult.to);
+          }
+        } catch (smsError) {
+          console.error("REALTIME_SMS_SYSTEM_ERROR:", smsError);
+        }
+      }
+    }
+    // =========================================================================
 
     return NextResponse.json(
       {

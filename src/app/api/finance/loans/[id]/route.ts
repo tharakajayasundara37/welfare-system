@@ -6,6 +6,9 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import Loan from "@/models/Loan";
 import Document from "@/models/Document";
 
+// SMS functions deka import kireema (Aluthin add kala)
+import { sendSms, buildLoanIssuedSms }  from "@/lib/sms/sendSms";
+
 type LoanStatusColor = "pending" | "approved" | "rejected" | "completed";
 
 function getStatusLabel(status?: string) {
@@ -291,5 +294,73 @@ export async function GET(
       },
       { status: 500 }
     );
+  }
+}
+
+// ALUTHIN ADD KARAPU FUNCTION EKA: LOAN EKA UPDATE WEDI SMS YAWANNA (Real-time SMS)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser || (currentUser.role !== "finance_officer" && currentUser.role !== "admin")) {
+      return NextResponse.json({ success: false, message: "Unauthorized access." }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { status, approvedAmount } = body;
+
+    const updatedLoan = await Loan.findByIdAndUpdate(
+      id,
+      { ...body, updatedAt: new Date() },
+      { new: true }
+    ).populate("userId", "phone");
+
+    if (!updatedLoan) {
+      return NextResponse.json({ success: false, message: "Loan not found." }, { status: 404 });
+    }
+
+    // Status eka 'disbursed' natham 'approved' unoth witharak real-time SMS eka yawanna
+    if (status === "disbursed" || status === "approved") {
+      
+      const memberPhone = updatedLoan.userId && typeof updatedLoan.userId === 'object' 
+        ? (updatedLoan.userId as { phone?: string }).phone 
+        : null;
+
+      if (memberPhone) {
+        const smsMessage = buildLoanIssuedSms({
+          loanType: updatedLoan.loanType || "Welfare Loan",
+          amount: approvedAmount || updatedLoan.approvedAmount || 0,
+        });
+
+        const smsResult = await sendSms({
+          to: memberPhone,
+          message: smsMessage,
+        });
+
+        if (!smsResult.success) {
+          console.error("REALTIME SMS SENDING FAILED:", smsResult.message);
+        } else {
+          console.log("REALTIME SMS SENT SUCCESSFULLY TO:", smsResult.to);
+        }
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Loan updated successfully", 
+      loan: updatedLoan 
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error("UPDATE_FINANCE_LOAN_ERROR", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: "Failed to update loan." 
+    }, { status: 500 });
   }
 }

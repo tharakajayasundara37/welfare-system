@@ -39,7 +39,7 @@ const userSchema = new Schema(
     employeeId: {
       type: String,
       unique: true,
-      sparse: true,
+      sparse: true, // sparse eken null wunata awulak na (unique index ekata gannaha)
       trim: true,
     },
 
@@ -107,7 +107,8 @@ const userSchema = new Schema(
   }
 );
 
-userSchema.index({ email: 1 });
+// Mongoose automatically creates indexes for unique fields (nic, email, phone, employeeId).
+// Duplicate warning eka nathi karanna api ema duplicate index eka methanin ain kara.
 userSchema.index({ role: 1 });
 userSchema.index({ accountStatus: 1 });
 

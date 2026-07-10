@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
 import dbConnect from "@/lib/dbConnect";
-import User from "@/models/User";
 
 type UserRole = "member" | "admin" | "welfare_officer" | "finance_officer";
 type ThemeMode = "light" | "dark";
@@ -33,7 +32,11 @@ function normalizeThemeMode(themeMode?: string): ThemeMode {
 
 export async function getCurrentUser() {
   try {
+    // 1. Issellama DB eka connect karagannawa
     await dbConnect();
+    
+    // 2. DB connect unata passe thamai User model eka load karanne (Cold Start fix)
+    const User = (await import("@/models/User")).default;
 
     const cookieStore = await cookies();
     const token = cookieStore.get("token")?.value;

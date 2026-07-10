@@ -4,6 +4,8 @@ import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import Loan from "@/models/Loan";
 import Document from "@/models/Document";
+import Notification from "@/models/Notification"; // Aluthin add kala
+import User from "@/models/User"; // Aluthin add kala
 
 type LoanUser = {
   _id?: {
@@ -236,5 +238,74 @@ export async function GET(
       },
       { status: 500 }
     );
+  }
+}
+
+// =================================================================================
+// ALUTHIN ADD KARAPU FUNCTION EKA: MEMBER LOAN EKA ACCEPT KARADDI NOTIFICATION YAWANNA
+// =================================================================================
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const currentUser = await getCurrentUser();
+
+    // Security check
+    if (!currentUser || currentUser.role !== "member") {
+      return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+    }
+
+    const { id } = await params;
+    if (!id) return NextResponse.json({ success: false, message: "Loan ID is required." }, { status: 400 });
+
+    const body = await request.json().catch(() => ({}));
+    const { status } = body; 
+
+    const loan = await Loan.findOne({ _id: id, userId: currentUser._id });
+
+    if (!loan) {
+      return NextResponse.json({ success: false, message: "Loan not found." }, { status: 404 });
+    }
+
+    // Update loan status to accepted
+    loan.status = status || "user_accepted";
+    loan.userAcceptanceStatus = "accepted";
+    loan.updatedAt = new Date();
+    await loan.save();
+
+    // ===================================================================
+    // MEMBER ACCEPT KALAMA ADMIN/FINANCE LATA NOTIFICATION YAWANA KALLA
+    // ===================================================================
+    if (loan.status === "user_accepted") {
+      // Find Admin and Finance officers from User collection
+      const staffMembers = await User.find({
+        role: { $in: ["admin", "finance_officer"] }
+      }).select("_id");
+
+      // Loop through staff and create notifications
+      for (const staff of staffMembers) {
+        try {
+          await Notification.create({
+            userId: staff._id,
+            type: "loan",
+            title: "Member Accepted Loan Offer",
+            message: `${currentUser.fullName || "A member"} has accepted the loan offer (Ref: ${loan.referenceId || loan.loanReference || "Loan"}). Ready for finance processing.`,
+            isRead: false,
+            status: "active",
+            isDeleted: false,
+          });
+        } catch (notiError) {
+          console.error("Staff Notification Error:", notiError);
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true, message: "Loan accepted successfully." });
+
+  } catch (error) {
+    console.error("MEMBER_ACCEPT_LOAN_ERROR", error);
+    return NextResponse.json({ success: false, message: "Failed to update loan." }, { status: 500 });
   }
 }
