@@ -187,12 +187,19 @@ export async function POST(request: NextRequest) {
       const file = formData.get(fileKey);
       if (file instanceof File) {
         const savedFile = await saveUploadedFile(file, loan._id.toString(), fileKey);
+        
+        // මේ ටික තමයි මගෙන් කලින් මිස් වුණේ
         const document = await Document.create({
           userId: user._id,
           loanId: loan._id,
           documentType: fileKey,
           label: activeDocumentLabels[fileKey],
+          fileName: savedFile.fileName,
+          originalName: savedFile.originalName,
           fileUrl: savedFile.fileUrl,
+          storagePath: savedFile.storagePath,
+          mimeType: savedFile.mimeType,
+          size: savedFile.size,
           status: "uploaded",
         });
         createdDocuments.push(document);
