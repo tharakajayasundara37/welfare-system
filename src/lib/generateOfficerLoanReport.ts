@@ -924,7 +924,6 @@ export async function generateOfficerLoanReport({
   const loanId = loan._id.toString();
   const referenceId = shortRef(loanId);
 
-  // 1. PDF එක සර්වර් එකේ සේව් කරන්නේ නැතුව Buffer එකක් විදිහට මෙමරියට ජෙනරේට් කරගන්නවා
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -1075,14 +1074,13 @@ export async function generateOfficerLoanReport({
     }
   });
 
-  // 2. ⚠️ ඩේටාබේස් එකට හෝ සිස්ටම් එකට කිසිම හානියක් නැතුව කෙලින්ම OIDC හරහා Vercel Blob එකට Upload කරනවා
   const blobPathName = `reports/officer-loan-reviews/${loanId}-officer-review.pdf`;
+  
   const blob = await put(blobPathName, pdfBuffer, {
-    access: "public",
+    access: "private", // This is the crucial fix for a private store
     contentType: "application/pdf",
   });
 
-  // 3. ඩේටාබේස් එකේ update වෙන්න ඕන reportUrl එක ලස්සනට return කරනවා (filePath එක හිස්ව තැබුවේ බිඳ වැටීම් වැලැක්වීමටයි)
   return {
     reportUrl: blob.url,
     filePath: "",
