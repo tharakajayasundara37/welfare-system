@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-
+import { put } from "@vercel/blob";
 import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
@@ -79,27 +77,22 @@ function safeFileName(fileName: string) {
     .toLowerCase();
 }
 
+// Vercel Blob හරහා file save කිරීම
 async function saveUploadedFile(file: File, loanId: string, documentType: string) {
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "loan-documents", loanId);
-  await mkdir(uploadDir, { recursive: true });
-
   const timestamp = Date.now();
   const cleanedOriginalName = safeFileName(file.name);
-  const fileName = `${documentType}-${timestamp}-${cleanedOriginalName}`;
+  // Blob storage path එක හදනවා
+  const blobPath = `loan-documents/${loanId}/${documentType}-${timestamp}-${cleanedOriginalName}`;
 
-  const storagePath = path.join(uploadDir, fileName);
-  await writeFile(storagePath, buffer);
-
-  const fileUrl = `/uploads/loan-documents/${loanId}/${fileName}`;
+  const blob = await put(blobPath, file, {
+    access: "public",
+  });
 
   return {
-    fileName,
+    fileName: blob.pathname,
     originalName: file.name,
-    fileUrl,
-    storagePath,
+    fileUrl: blob.url,
+    storagePath: blob.url, // DB Compatibility එකට url එකම පාවිච්චි කරන්න
     mimeType: file.type || "application/octet-stream",
     size: file.size,
   };
