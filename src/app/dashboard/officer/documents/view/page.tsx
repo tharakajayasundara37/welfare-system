@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import {
@@ -11,6 +12,7 @@ import {
   Loader2,
   ShieldCheck,
   User,
+  Users,
   XCircle,
 } from "lucide-react";
 
@@ -138,6 +140,7 @@ async function readJsonResponse(response: Response) {
 
   return response.json();
 }
+
 function DetailRow({
   label,
   value,
@@ -168,11 +171,14 @@ function DocumentPreview({ document }: { document: DocumentDetail }) {
     );
   }
 
+  // Secure API ලින්ක් එක
+  const secureFileUrl = `/api/documents/view?url=${encodeURIComponent(fileUrl)}`;
+
   if (mimeType.includes("image")) {
     return (
       <div className="overflow-hidden rounded-[28px] border border-[#d9c8b8] bg-[#efe3d6]/70 p-4">
         <img
-          src={fileUrl}
+          src={secureFileUrl}
           alt={document.title}
           className="mx-auto max-h-[720px] w-auto max-w-full rounded-2xl object-contain shadow-[0_20px_70px_rgba(44,36,31,0.18)]"
         />
@@ -184,7 +190,7 @@ function DocumentPreview({ document }: { document: DocumentDetail }) {
     return (
       <div className="overflow-hidden rounded-[28px] border border-[#d9c8b8] bg-[#efe3d6]/70">
         <iframe
-          src={fileUrl}
+          src={secureFileUrl}
           title={document.title}
           className="h-[720px] w-full"
         />
@@ -204,7 +210,7 @@ function DocumentPreview({ document }: { document: DocumentDetail }) {
         This file type cannot preview here. Open original file.
       </p>
 
-      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+      <a href={secureFileUrl} target="_blank" rel="noopener noreferrer">
         <Button className="mt-5 rounded-2xl bg-[#9b6f45] text-white hover:bg-[#835c38]">
           <Eye className="mr-2" size={17} />
           Open File
@@ -397,7 +403,7 @@ function OfficerDocumentViewContent() {
 
               {document.fileUrl ? (
                 <a
-                  href={document.fileUrl}
+                  href={`/api/documents/view?url=${encodeURIComponent(document.fileUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -609,7 +615,6 @@ function OfficerDocumentViewContent() {
                     )}
                     Reject Document
                   </Button>
-                  
                 </div>
               </CardContent>
             </Card>
@@ -619,6 +624,7 @@ function OfficerDocumentViewContent() {
     </div>
   );
 }
+
 export default function OfficerDocumentViewPage() {
   return (
     <Suspense
