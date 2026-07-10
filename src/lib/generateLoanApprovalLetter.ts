@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob";
 import PDFDocument from "pdfkit/js/pdfkit.standalone";
 
 interface LetterUser {
@@ -772,19 +771,7 @@ export async function generateLoanApprovalLetter({
     ? "Funeral Support Approval Letter"
     : "Loan Approval Offer Letter";
 
-  const letterDir = path.join(
-    process.cwd(),
-    "public",
-    "reports",
-    "loan-approval-letters"
-  );
-
-  await mkdir(letterDir, { recursive: true });
-
-  const fileName = `${loanId}-loan-approval-letter.pdf`;
-  const filePath = path.join(letterDir, fileName);
-  const letterUrl = `/reports/loan-approval-letters/${fileName}`;
-
+  // Generating PDF in memory buffer instead of writing to disk
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -979,10 +966,16 @@ export async function generateLoanApprovalLetter({
     }
   });
 
-  await writeFile(filePath, pdfBuffer);
+  // Upload directly to Vercel Blob with private access
+  const blobPathName = `reports/loan-approval-letters/${loanId}-loan-approval-letter.pdf`;
+  
+  const blob = await put(blobPathName, pdfBuffer, {
+    access: "private",
+    contentType: "application/pdf",
+  });
 
   return {
-    letterUrl,
-    filePath,
+    letterUrl: blob.url,
+    filePath: "", // Left empty intentionally as it's not saved locally
   };
 }

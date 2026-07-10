@@ -7,6 +7,8 @@ import { generateLoanApprovalLetter } from "@/lib/generateLoanApprovalLetter";
 import Loan from "@/models/Loan";
 import Notification from "@/models/Notification";
 
+export const dynamic = "force-dynamic";
+
 type PopulatedUser = {
   _id?: {
     toString: () => string;
@@ -303,11 +305,8 @@ export async function PATCH(
 
     const member = normalizeUser(updatedLoan.userId);
 
-    console.log("APPROVE_NOTIFICATION_MEMBER_ID:", member._id);
-    console.log("APPROVE_CURRENT_ADMIN_ID:", currentUser._id);
-
     if (member._id) {
-      const createdNotification = await Notification.create({
+      await Notification.create({
         userId: member._id,
         type: "loan",
         title: "Loan Approved",
@@ -322,13 +321,6 @@ export async function PATCH(
           approvalLetterUrl: letterUrl,
         },
       });
-
-      console.log(
-        "APPROVE_NOTIFICATION_CREATED:",
-        createdNotification._id.toString()
-      );
-    } else {
-      console.log("APPROVE_NOTIFICATION_SKIPPED: member._id missing");
     }
 
     return NextResponse.json(
