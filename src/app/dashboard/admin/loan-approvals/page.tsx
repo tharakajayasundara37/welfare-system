@@ -734,7 +734,7 @@ export default function AdminLoanApprovalsPage() {
                               <td className="px-5 py-4 text-center align-middle">
                                 {loan.officerReportUrl ? (
                                   <a
-                                    href={loan.officerReportUrl}
+                                    href={`/api/documents/view?url=${encodeURIComponent(loan.officerReportUrl)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                   >
@@ -762,7 +762,7 @@ export default function AdminLoanApprovalsPage() {
                               <td className="px-5 py-4 text-center align-middle">
                                 {loan.approvalLetterUrl ? (
                                   <a
-                                    href={loan.approvalLetterUrl}
+                                    href={`/api/documents/view?url=${encodeURIComponent(loan.approvalLetterUrl)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                   >
