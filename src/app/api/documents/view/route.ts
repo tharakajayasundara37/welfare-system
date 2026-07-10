@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { get } from "@vercel/blob";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
 export const dynamic = "force-dynamic";
@@ -6,35 +7,29 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user) return new NextResponse("Unauthorized", { status: 401 });
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
     const url = request.nextUrl.searchParams.get("url");
-    if (!url) return new NextResponse("Missing file URL", { status: 400 });
-
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-
-    // මෙතනදී ලොග් එකක් දානවා, Vercel Logs වලදී Token එකක් තියෙනවද කියලා බලන්න පුළුවන්
-    if (!token) {
-      console.error("CRITICAL: BLOB_READ_WRITE_TOKEN is undefined in Vercel!");
-      return new NextResponse("Server Configuration Error: Token missing", { status: 500 });
+    if (!url) {
+      return new NextResponse("Missing file URL", { status: 400 });
     }
 
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const result = await get(url, { access: "private" });
 
-    if (!response.ok) {
-      const err = await response.text();
-      return new NextResponse(`Blob Error: ${err}`, { status: response.status });
+    if (!result || result.statusCode !== 200) {
+      return new NextResponse("File not found in storage", { status: 404 });
     }
-
-    return new NextResponse(response.body, {
+    return new NextResponse(result.stream, {
       headers: {
-        "Content-Type": response.headers.get("Content-Type") || "application/octet-stream",
-        "Content-Disposition": "inline",
+        "Content-Type": result.blob.contentType || "application/octet-stream",
+        "Cache-Control": "no-store, max-age=0",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {
+    console.error("FINAL_DOCUMENT_VIEW_ERROR:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
