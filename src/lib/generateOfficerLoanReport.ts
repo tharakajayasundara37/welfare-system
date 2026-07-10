@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob";
 import PDFDocument from "pdfkit/js/pdfkit.standalone";
 
 interface ReportUser {
@@ -804,14 +803,14 @@ function addDecisionBox(doc: PDFKit.PDFDocument, loan: ReportLoan, officer: Repo
     .fontSize(8.8)
     .fillColor(colors.green)
     .text("Officer:", PAGE_MARGIN + 62, y + 78, {
-      continued: true,
+      underline: false,
     });
 
   doc
     .font("Helvetica")
     .fontSize(8.8)
     .fillColor(colors.ink)
-    .text(` ${valueOrNA(officer.fullName)} | ${valueOrNA(officer.employeeId)}`, {
+    .text(` ${valueOrNA(officer.fullName)} | ${valueOrNA(officer.employeeId)}`, PAGE_MARGIN + 102, y + 78, {
       lineBreak: false,
     });
 
@@ -820,14 +819,14 @@ function addDecisionBox(doc: PDFKit.PDFDocument, loan: ReportLoan, officer: Repo
     .fontSize(8.8)
     .fillColor(colors.green)
     .text("Remark:", PAGE_MARGIN + 62, y + 93, {
-      continued: true,
+      underline: false,
     });
 
   doc
     .font("Helvetica")
     .fontSize(8.8)
     .fillColor(colors.ink)
-    .text(` ${valueOrNA(loan.officerRemark)}`, {
+    .text(` ${valueOrNA(loan.officerRemark)}`, PAGE_MARGIN + 106, y + 93, {
       width: CONTENT_WIDTH - 120,
       ellipsis: true,
       lineBreak: false,
@@ -925,19 +924,7 @@ export async function generateOfficerLoanReport({
   const loanId = loan._id.toString();
   const referenceId = shortRef(loanId);
 
-  const reportDir = path.join(
-    process.cwd(),
-    "public",
-    "reports",
-    "officer-loan-reviews"
-  );
-
-  await mkdir(reportDir, { recursive: true });
-
-  const fileName = `${loanId}-officer-review.pdf`;
-  const filePath = path.join(reportDir, fileName);
-  const reportUrl = `/reports/officer-loan-reviews/${fileName}`;
-
+  // 1. PDF එක සර්වර් එකේ සේව් කරන්නේ නැතුව Buffer එකක් විදිහට මෙමරියට ජෙනරේට් කරගන්නවා
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -1088,10 +1075,16 @@ export async function generateOfficerLoanReport({
     }
   });
 
-  await writeFile(filePath, pdfBuffer);
+  // 2. ⚠️ ඩේටාබේස් එකට හෝ සිස්ටම් එකට කිසිම හානියක් නැතුව කෙලින්ම OIDC හරහා Vercel Blob එකට Upload කරනවා
+  const blobPathName = `reports/officer-loan-reviews/${loanId}-officer-review.pdf`;
+  const blob = await put(blobPathName, pdfBuffer, {
+    access: "public",
+    contentType: "application/pdf",
+  });
 
+  // 3. ඩේටාබේස් එකේ update වෙන්න ඕන reportUrl එක ලස්සනට return කරනවා (filePath එක හිස්ව තැබුවේ බිඳ වැටීම් වැලැක්වීමටයි)
   return {
-    reportUrl,
-    filePath,
+    reportUrl: blob.url,
+    filePath: "",
   };
 }

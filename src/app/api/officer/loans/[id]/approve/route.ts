@@ -8,6 +8,51 @@ import { createNotification } from "@/lib/notifications/createNotification";
 import Loan from "@/models/Loan";
 import Document from "@/models/Document";
 
+// 1. Types defined to resolve ESLint (TypeScript) errors
+interface PopulatedUser {
+  _id?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  nic?: string;
+  employeeId?: string;
+  department?: string;
+  jobRole?: string;
+  role?: string;
+  companyName?: string;
+  salaryRange?: string;
+  accountStatus?: string;
+}
+
+interface PopulatedLoanData {
+  _id: { toString: () => string };
+  userId: PopulatedUser;
+  welfareOfficerId: PopulatedUser;
+  loanType?: string;
+  requestedAmount?: number;
+  approvedAmount?: number;
+  purpose?: string;
+  monthlyIncome?: number;
+  employmentType?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+  guarantorNic?: string;
+  systemInterestRate?: number;
+  preferredPeriodMonths?: number;
+  recommendedPeriodMonths?: number;
+  monthlyInstallment?: number;
+  totalRepayment?: number;
+  riskLevel?: string;
+  eligibilityStatus?: string;
+  documentStatus?: string;
+  status?: string;
+  officerRemark?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export const dynamic = "force-dynamic";
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -78,8 +123,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "No uploaded documents found. Please verify documents before approving.",
+          message: "No uploaded documents found. Please verify documents before approving.",
         },
         { status: 400 }
       );
@@ -93,8 +137,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "All documents must be verified before approving this loan.",
+          message: "All documents must be verified before approving this loan.",
         },
         { status: 400 }
       );
@@ -109,13 +152,14 @@ export async function PATCH(
 
     await loan.save();
 
-    const populatedLoan = await Loan.findById(loan._id)
+    // 2. Using the 'PopulatedLoanData' type instead of 'any'
+    const populatedLoan = (await Loan.findById(loan._id)
       .populate(
         "userId",
         "fullName email phone nic employeeId department jobRole companyName salaryRange accountStatus"
       )
       .populate("welfareOfficerId", "fullName email role employeeId")
-      .lean();
+      .lean()) as unknown as PopulatedLoanData; 
 
     if (!populatedLoan) {
       return NextResponse.json(
@@ -127,31 +171,12 @@ export async function PATCH(
       );
     }
 
+    // 3. Removed 'as any' assertions and strictly typed the payload
     const { reportUrl } = await generateOfficerLoanReport({
       loan: {
         _id: populatedLoan._id.toString(),
-        userId: populatedLoan.userId as {
-          _id?: string;
-          fullName?: string;
-          email?: string;
-          phone?: string;
-          nic?: string;
-          employeeId?: string;
-          department?: string;
-          jobRole?: string;
-          role?: string;
-        },
-        welfareOfficerId: populatedLoan.welfareOfficerId as {
-          _id?: string;
-          fullName?: string;
-          email?: string;
-          phone?: string;
-          nic?: string;
-          employeeId?: string;
-          department?: string;
-          jobRole?: string;
-          role?: string;
-        },
+        userId: populatedLoan.userId, 
+        welfareOfficerId: populatedLoan.welfareOfficerId, 
         loanType: populatedLoan.loanType,
         requestedAmount: populatedLoan.requestedAmount,
         approvedAmount: populatedLoan.approvedAmount,
