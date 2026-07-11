@@ -584,7 +584,7 @@ export default function MemberLoanOffersPage() {
                             <td className="px-5 py-4 text-center align-middle">
                               {loan.approvalLetterUrl ? (
                                 <a
-                                  href={loan.approvalLetterUrl}
+                                  href={`/api/documents/view?url=${encodeURIComponent(loan.approvalLetterUrl)}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
