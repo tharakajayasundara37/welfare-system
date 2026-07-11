@@ -612,7 +612,7 @@ export default function MemberLoanDetailPage() {
                               <div className="flex justify-end">
                                 {document.fileUrl ? (
                                   <a
-                                    href={document.fileUrl}
+                                    href={`/api/documents/view?url=${encodeURIComponent(document.fileUrl)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                   >
