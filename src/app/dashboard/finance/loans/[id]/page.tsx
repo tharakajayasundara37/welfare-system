@@ -9,16 +9,13 @@ import {
   Banknote,
   CalendarDays,
   CheckCircle2,
-  Clock3,
   Download,
   FileText,
   Landmark,
   Loader2,
   Mail,
-  Phone,
   ShieldCheck,
   UserRound,
-  XCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -137,22 +134,6 @@ function formatDate(dateValue?: string | null) {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  });
-}
-
-function formatDateTime(dateValue?: string | null) {
-  if (!dateValue) return "-";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleString("en-LK", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -420,7 +401,7 @@ export default function FinanceLoanDetailPage() {
             <div className="flex flex-wrap gap-3">
               {loan.approvalLetterUrl ? (
                 <a
-                  href={loan.approvalLetterUrl}
+                  href={`/api/documents/view?url=${encodeURIComponent(loan.approvalLetterUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -433,7 +414,7 @@ export default function FinanceLoanDetailPage() {
 
               {loan.officerReportUrl ? (
                 <a
-                  href={loan.officerReportUrl}
+                  href={`/api/documents/view?url=${encodeURIComponent(loan.officerReportUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -474,7 +455,7 @@ export default function FinanceLoanDetailPage() {
             title="Monthly EMI"
             value={formatCurrency(loan.monthlyInstallment)}
             subtitle="Expected monthly installment"
-            icon={CreditCardIcon}
+            icon={Mail}
           />
 
           <InfoCard
@@ -757,7 +738,7 @@ export default function FinanceLoanDetailPage() {
                             <td className="px-5 py-4">
                               {document.fileUrl ? (
                                 <a
-                                  href={document.fileUrl}
+                                  href={`/api/documents/view?url=${encodeURIComponent(document.fileUrl)}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
