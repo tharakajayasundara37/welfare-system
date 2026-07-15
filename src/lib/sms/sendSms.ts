@@ -171,6 +171,7 @@ export function buildMeetingReminderSms({
 
   return `Welfare Notice: ${title} is scheduled on ${dateText} at ${timeText}, ${venue}. Reason: ${shortReason}. Please attend on time.`;
 }
+
 export function buildInstallmentReminderSms({
   loanType,
   amount,
@@ -190,6 +191,7 @@ export function buildInstallmentReminderSms({
     amount
   ).toLocaleString()} is due tomorrow (${dateText}). Please pay on time.`;
 }
+
 export function buildLoanIssuedSms({
   loanType,
   amount,
@@ -201,7 +203,8 @@ export function buildLoanIssuedSms({
     amount
   ).toLocaleString()} has been approved and disbursed by the Finance Officer.`;
 }
-// Dawasata kalin yawana reminder SMS eka
+
+// Reminder sent 1 day before due date
 export function buildPreDueDateSms({
   amount,
   dueDate,
@@ -219,7 +222,7 @@ export function buildPreDueDateSms({
   ).toLocaleString()} is due tomorrow (${dateText}). Please make the payment to avoid penalties.`;
 }
 
-// Dawas 3kata passe penalty add wunama yawana SMS eka
+// Updated Penalty Warning SMS - Professional version with daily penalty mention
 export function buildPenaltyWarningSms({
   penaltyRate,
   penaltyAmount,
@@ -227,7 +230,7 @@ export function buildPenaltyWarningSms({
   penaltyRate: number;
   penaltyAmount: number;
 }) {
-  return `Welfare Notice: Your loan installment is 3 days overdue. A penalty of ${penaltyRate}% (Rs. ${Number(
+  return `Welfare Notice: Your loan installment is overdue. A daily penalty of ${penaltyRate}% (Rs. ${Number(
     penaltyAmount
-  ).toLocaleString()}) has been applied. Please pay immediately.`;
+  ).toLocaleString()}) has been applied. Please pay immediately to stop further penalties.`;
 }

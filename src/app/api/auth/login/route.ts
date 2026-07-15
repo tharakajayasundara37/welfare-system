@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // Clear old cookie
     response.cookies.set("token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
       maxAge: 0,
     });
 
+    // Set new token
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

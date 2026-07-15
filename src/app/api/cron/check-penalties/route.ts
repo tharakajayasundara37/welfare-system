@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Installment from "@/models/Installment";
 import Loan from "@/models/Loan";
-import LoanSetting from "@/models/LoanSettings"; // Admin settings ganna aluth import eka
+import LoanSetting from "@/models/LoanSettings";
 
 import {
   sendSms,
@@ -14,13 +14,10 @@ export async function GET() {
   try {
     await dbConnect();
 
-    // 1. Admin dapu settings database eken gannawa
+    // Get penalty rate from admin settings (default 2%)
     const settings = await LoanSetting.findOne({ isActive: true });
-    
-    // Database eke setting ekak thama hadala nathnam default 2% gannawa 
-    const PENALTY_RATE_PERCENTAGE = settings?.latePaymentPenaltyRate || 2; 
+    const PENALTY_RATE_PERCENTAGE = settings?.latePaymentPenaltyRate || 2;
 
-    // Dawas wala time calculate kireema (Start of the day)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -30,74 +27,67 @@ export async function GET() {
     const dayAfterTomorrow = new Date(tomorrow);
     dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
 
-    const threeDaysAgo = new Date(today);
-    threeDaysAgo.setDate(today.getDate() - 3);
+    // 4 days grace period
+    const fourDaysAgo = new Date(today);
+    fourDaysAgo.setDate(today.getDate() - 4);
 
     let remindersSent = 0;
-    let penaltiesApplied = 0;
+    let penaltiesAppliedToday = 0;
 
-    // =========================================================================
-    // STEP 1: DAWASATA KALIN (TOMORROW) THIYENA INSTALLMENTS WALATA REMINDER EKA
-    // =========================================================================
+    // STEP 1: Send reminder 1 day before due date
     const upcomingInstallments = await Installment.find({
       status: "pending",
       reminderSent: false,
       dueDate: {
         $gte: tomorrow,
-        $lt: dayAfterTomorrow, // Heta dawasa athulatha thiyena ewa
+        $lt: dayAfterTomorrow,
       },
     }).populate("userId", "phone");
 
-    for (const inst of upcomingInstallments) {
-      const memberPhone = inst.userId && typeof inst.userId === "object" 
-        ? (inst.userId as { phone?: string }).phone 
-        : null;
+    for (const installment of upcomingInstallments) {
+      const memberPhone =
+        installment.userId && typeof installment.userId === "object"
+          ? (installment.userId as { phone?: string }).phone
+          : null;
 
       if (memberPhone) {
-        const smsMsg = buildPreDueDateSms({
-          amount: inst.amount,
-          dueDate: inst.dueDate,
+        const smsMessage = buildPreDueDateSms({
+          amount: installment.amount,
+          dueDate: installment.dueDate,
         });
 
-        await sendSms({ to: memberPhone, message: smsMsg });
+        await sendSms({ to: memberPhone, message: smsMessage });
 
-        // Database eke reminderSent true karanawa
-        inst.reminderSent = true;
-        inst.reminderSentAt = new Date();
-        await inst.save();
+        installment.reminderSent = true;
+        installment.reminderSentAt = new Date();
+        await installment.save();
 
         remindersSent++;
       }
     }
 
-    // =========================================================================
-    // STEP 2: DAWAS 3K PARAKKU (3 DAYS OVERDUE) EWATA ADMIN GE PENALTY EKA SAHA SMS EKA
-    // =========================================================================
+    // STEP 2: Daily penalty after 4 days grace period
     const overdueInstallments = await Installment.find({
       status: { $in: ["pending", "overdue"] },
-      penaltyApplied: false,
-      dueDate: {
-        $lte: threeDaysAgo, // Dawas 3kata kalin hari eeta kalin hari due wechcha ewa
-      },
+      dueDate: { $lte: fourDaysAgo },
     }).populate("userId", "phone");
 
-    for (const inst of overdueInstallments) {
-      // Admin ge dynamic penalty amount eka hadanawa
-      const penaltyAmount = (inst.amount * PENALTY_RATE_PERCENTAGE) / 100;
+    for (const installment of overdueInstallments) {
+      const dailyPenaltyAmount =
+        (installment.amount * PENALTY_RATE_PERCENTAGE) / 100;
 
-      // 1. Installment eka update karanawa
-      inst.status = "overdue";
-      inst.penaltyApplied = true;
-      inst.penaltyAppliedAt = new Date();
-      inst.penaltyAmount = penaltyAmount;
-      inst.penaltyRate = PENALTY_RATE_PERCENTAGE; // Ewele database eke thibba rate eka save karanawa
-      await inst.save();
+      installment.penaltyAmount =
+        (installment.penaltyAmount || 0) + dailyPenaltyAmount;
+      installment.status = "overdue";
+      installment.lastPenaltyAppliedAt = new Date();
+      installment.penaltyRate = PENALTY_RATE_PERCENTAGE;
 
-      // 2. Main Loan eka update karanawa
-      await Loan.findByIdAndUpdate(inst.loanId, {
+      await installment.save();
+
+      await Loan.findByIdAndUpdate(installment.loanId, {
         $inc: {
-          penaltyAmount: penaltyAmount,
-          remainingBalance: penaltyAmount, 
+          penaltyAmount: dailyPenaltyAmount,
+          remainingBalance: dailyPenaltyAmount,
           penaltyAppliedCount: 1,
         },
         $set: {
@@ -105,43 +95,48 @@ export async function GET() {
         },
       });
 
-      // 3. Penalty SMS eka yawanawa
-      const memberPhone = inst.userId && typeof inst.userId === "object"
-        ? (inst.userId as { phone?: string }).phone
-        : null;
+      const memberPhone =
+        installment.userId && typeof installment.userId === "object"
+          ? (installment.userId as { phone?: string }).phone
+          : null;
 
       if (memberPhone) {
-        const warningMsg = buildPenaltyWarningSms({
+        const warningMessage = buildPenaltyWarningSms({
           penaltyRate: PENALTY_RATE_PERCENTAGE,
-          penaltyAmount: penaltyAmount,
+          penaltyAmount: dailyPenaltyAmount,
         });
 
-        await sendSms({ to: memberPhone, message: warningMsg });
+        await sendSms({ to: memberPhone, message: warningMessage });
       }
 
-      penaltiesApplied++;
+      penaltiesAppliedToday++;
     }
 
     return NextResponse.json(
       {
         success: true,
         cron: true,
-        message: "Penalties and Reminders processed using dynamic Admin settings.",
+        message: "4-day grace period + Daily penalty system executed successfully.",
         data: {
           appliedPenaltyRate: `${PENALTY_RATE_PERCENTAGE}%`,
           remindersSent,
-          penaltiesApplied,
+          penaltiesAppliedToday,
         },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("CRON_PENALTIES_ERROR", error);
+    console.error("CRON_PENALTIES_ERROR:", error);
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+
     return NextResponse.json(
       {
         success: false,
         cron: true,
-        message: "Failed to process penalties.",
+        message: "Failed to process daily penalties and reminders.",
+        error: errorMessage,
       },
       { status: 500 }
     );
