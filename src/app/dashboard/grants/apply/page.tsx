@@ -15,7 +15,6 @@ import {
   RefreshCcw,
   ShieldCheck,
   UploadCloud,
-  User,
   UserRoundCheck,
 } from "lucide-react";
 
@@ -63,16 +62,14 @@ type GrantApplyResponse = {
   };
 };
 
+// Removed medicalDocument, educationDocument, and hardshipProof
 type FileKey =
   | "nicFront"
   | "nicBack"
   | "employeeProof"
-  | "medicalDocument"
-  | "educationDocument"
   | "deathCertificate"
   | "relationshipProof"
   | "disasterProof"
-  | "hardshipProof"
   | "bankStatement";
 
 type FileItem = {
@@ -104,21 +101,8 @@ const commonDocuments: FileItem[] = [
   },
 ];
 
+// Removed Medical, Education, and Hardship grant document mappings
 const grantSpecificDocuments: Record<string, FileItem[]> = {
-  "Medical Grant": [
-    {
-      key: "medicalDocument",
-      label: "Medical Document",
-      description: "Medical report, bill, prescription or hospital proof.",
-    },
-  ],
-  "Education Grant": [
-    {
-      key: "educationDocument",
-      label: "Education Document",
-      description: "Course invoice, school letter or education proof.",
-    },
-  ],
   "Funeral Support Grant": [
     {
       key: "deathCertificate",
@@ -136,13 +120,6 @@ const grantSpecificDocuments: Record<string, FileItem[]> = {
       key: "disasterProof",
       label: "Disaster Proof",
       description: "Police report, GS certificate, damage proof or photos.",
-    },
-  ],
-  "Hardship Grant": [
-    {
-      key: "hardshipProof",
-      label: "Hardship Proof",
-      description: "Letter, income proof or supporting hardship document.",
     },
   ],
 };
@@ -164,10 +141,10 @@ function formatCurrency(amount: number) {
   }).format(amount || 0);
 }
 
+// Removed medical grant priority condition
 function getPriorityText(grantType: string, amount: number) {
   if (grantType === "Funeral Support Grant") return "Emergency";
   if (grantType === "Disaster Relief Grant") return "Emergency";
-  if (grantType === "Medical Grant") return "High";
   if (amount >= 100000) return "High";
   return "Normal";
 }
@@ -195,16 +172,14 @@ export default function GrantApplyPage() {
   const [reason, setReason] = useState("");
   const [relationshipWithDeceased, setRelationshipWithDeceased] = useState("");
 
+  // Cleaned up file state to only include remaining files
   const [files, setFiles] = useState<Record<FileKey, File | null>>({
     nicFront: null,
     nicBack: null,
     employeeProof: null,
-    medicalDocument: null,
-    educationDocument: null,
     deathCertificate: null,
     relationshipProof: null,
     disasterProof: null,
-    hardshipProof: null,
     bankStatement: null,
   });
 
@@ -287,16 +262,14 @@ export default function GrantApplyPage() {
     setEmergencyPhoneNumber("");
     setSubmittedGrant(undefined);
 
+    // Cleaned up reset file state
     setFiles({
       nicFront: null,
       nicBack: null,
       employeeProof: null,
-      medicalDocument: null,
-      educationDocument: null,
       deathCertificate: null,
       relationshipProof: null,
       disasterProof: null,
-      hardshipProof: null,
       bankStatement: null,
     });
   }
@@ -467,8 +440,7 @@ export default function GrantApplyPage() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6b5e54]">
-                Submit medical, education, disaster, hardship or funeral support
-                grant requests with required documents.
+                Submit disaster or funeral support grant requests with required documents.
               </p>
             </div>
 
@@ -644,21 +616,13 @@ export default function GrantApplyPage() {
                           <SelectValue placeholder="Select grant type" />
                         </SelectTrigger>
 
+                        {/* Removed Medical, Education and Hardship options */}
                         <SelectContent className="border-[#d9c8b8] bg-[#fbf7ef] text-[#2b241f]">
-                          <SelectItem value="Medical Grant">
-                            Medical Grant
-                          </SelectItem>
-                          <SelectItem value="Education Grant">
-                            Education Grant
-                          </SelectItem>
                           <SelectItem value="Funeral Support Grant">
                             Funeral Support Grant
                           </SelectItem>
                           <SelectItem value="Disaster Relief Grant">
                             Disaster Relief Grant
-                          </SelectItem>
-                          <SelectItem value="Hardship Grant">
-                            Hardship Grant
                           </SelectItem>
                         </SelectContent>
                       </Select>

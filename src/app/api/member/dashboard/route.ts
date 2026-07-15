@@ -4,6 +4,7 @@ import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import Loan from "@/models/Loan";
 import MeetingNotice from "@/models/MeetingNotice";
+import Installment from "@/models/Installment";
 
 type RawLoan = {
   _id: {
@@ -35,6 +36,15 @@ type RawMeeting = {
   meetingAt?: string | Date;
   priority?: string;
   targetAudience?: string;
+};
+
+type RawInstallment = {
+  _id: { toString: () => string };
+  loanId?: { loanType?: string };
+  installmentNumber?: number;
+  amount?: number;
+  penaltyAmount?: number;
+  dueDate?: Date | string;
 };
 
 function formatStatus(status: string) {
@@ -91,6 +101,7 @@ export async function GET() {
       rejectedLoans,
       recentLoans,
       upcomingMeeting,
+      overdueInst,
     ] = await Promise.all([
       Loan.countDocuments({ userId }),
 
@@ -144,6 +155,16 @@ export async function GET() {
       })
         .sort({ meetingAt: 1 })
         .lean<RawMeeting | null>(),
+
+      // Fetch the oldest overdue installment
+      Installment.findOne({
+        userId,
+        status: "overdue",
+        isDeleted: { $ne: true },
+      })
+        .populate("loanId", "loanType")
+        .sort({ dueDate: 1 })
+        .lean<RawInstallment | null>(),
     ]);
 
     const activeLoans = await Loan.countDocuments({
@@ -205,6 +226,17 @@ export async function GET() {
               meetingAt: upcomingMeeting.meetingAt || null,
               priority: upcomingMeeting.priority || "normal",
               targetAudience: upcomingMeeting.targetAudience || "all_members",
+            }
+          : null,
+        
+        overdueInstallment: overdueInst
+          ? {
+              id: overdueInst._id.toString(),
+              loanType: overdueInst.loanId?.loanType || "Loan",
+              installmentNumber: overdueInst.installmentNumber || 1,
+              amount: overdueInst.amount || 0,
+              penaltyAmount: overdueInst.penaltyAmount || 0,
+              dueDate: overdueInst.dueDate || null,
             }
           : null,
       },

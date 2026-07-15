@@ -5,6 +5,10 @@ import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import User from "@/models/User";
 
+// To prevent caching
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const allowedStaffRoles = ["admin", "welfare_officer", "finance_officer"];
 
 async function generateEmployeeId() {
@@ -54,15 +58,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    const { fullName, nic, email, phone, password, role, department, jobRole } =
-      body;
+    const { fullName, nic, email, phone, password, role, department, jobRole } = body;
 
     if (!fullName || !nic || !email || !phone || !password || !role) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Full name, NIC, email, phone, password and role are required.",
+          message: "Full name, NIC, email, phone, password and role are required.",
         },
         { status: 400 }
       );
@@ -180,10 +182,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to create staff account.",
+        message: error instanceof Error ? error.message : "Failed to create staff account.",
       },
       { status: 500 }
     );
@@ -237,10 +236,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to load staff accounts.",
+        message: error instanceof Error ? error.message : "Failed to load staff accounts.",
       },
       { status: 500 }
     );
@@ -273,7 +269,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const staffId = searchParams.get("id");
 
     if (!staffId) {
@@ -286,7 +282,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (staffId === currentUser._id) {
+    if (staffId === currentUser._id.toString()) {
       return NextResponse.json(
         {
           success: false,
@@ -318,13 +314,28 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await User.findByIdAndUpdate(staffId, {
-      $set: {
-        isDeleted: true,
-        deletedAt: new Date(),
-        accountStatus: "suspended",
+    // Forcefully update the database using strict: false
+    const updatedUser = await User.findByIdAndUpdate(
+      staffId,
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          accountStatus: "suspended",
+        },
       },
-    });
+      { new: true, strict: false }
+    );
+
+    if (!updatedUser) {
+       return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to update database.",
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -339,10 +350,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete staff account.",
+        message: error instanceof Error ? error.message : "Failed to delete staff account.",
       },
       { status: 500 }
     );

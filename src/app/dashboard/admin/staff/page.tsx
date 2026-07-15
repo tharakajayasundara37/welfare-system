@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   BriefcaseBusiness,
@@ -57,6 +58,18 @@ interface CreateStaffResponse {
   success: boolean;
   message?: string;
   user?: StaffUser;
+}
+
+// Interface for StatCard Props to fix "Unexpected any" error
+interface StatCardProps {
+  title: string;
+  value: number;
+  subtitle: string;
+  icon: React.ElementType;
+  iconColor: string;
+  iconBg: string;
+  glow: string;
+  badge: string;
 }
 
 const initialForm = {
@@ -128,16 +141,7 @@ function StatCard({
   iconBg,
   glow,
   badge,
-}: {
-  title: string;
-  value: number;
-  subtitle: string;
-  icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
-  glow: string;
-  badge: string;
-}) {
+}: StatCardProps) {
   return (
     <Card className="group cursor-pointer overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.16)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:border-[#9b6f45]/45 hover:bg-[#fffaf3]">
       <CardContent className="relative p-6">
@@ -185,6 +189,7 @@ function StatCard({
 }
 
 export default function AdminStaffPage() {
+  const router = useRouter();
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [formData, setFormData] = useState(initialForm);
 
@@ -210,9 +215,13 @@ export default function AdminStaffPage() {
       setMessage("");
       setIsSuccess(false);
 
-      const response = await fetch("/api/admin/staff", {
+      const response = await fetch(`/api/admin/staff?t=${Date.now()}`, {
         method: "GET",
         cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+        },
       });
 
       const contentType = response.headers.get("content-type");
@@ -287,6 +296,8 @@ export default function AdminStaffPage() {
       setShowPassword(false);
       setMessage(result.message || "Staff account created successfully.");
       setIsSuccess(true);
+
+      router.refresh();
     } catch (error) {
       console.error("CREATE_STAFF_UI_ERROR", error);
       setMessage("Failed to create staff account.");
@@ -295,52 +306,45 @@ export default function AdminStaffPage() {
       setCreating(false);
     }
   };
-    const handleDeleteStaff = async (
-  staffId: string,
-  fullName?: string
-) => {
-  const confirmed = window.confirm(
-    `Are you sure you want to delete ${fullName || "this staff account"}?`
-  );
 
-  if (!confirmed) return;
+  const handleDeleteStaff = async (staffId: string, fullName?: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${fullName || "this staff account"}?`
+    );
 
-  try {
-    setDeletingId(staffId);
+    if (!confirmed) return;
 
-    const response = await fetch(
-      `/api/admin/staff?id=${staffId}`,
-      {
+    try {
+      setDeletingId(staffId);
+      setMessage("");
+
+      const response = await fetch(`/api/admin/staff?id=${staffId}`, {
         method: "DELETE",
         cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setMessage(result.message || "Failed to delete staff account.");
+        setIsSuccess(false);
+        return;
       }
-    );
 
-    const result = await response.json();
+      setStaff((prev) => prev.filter((user) => String(user._id) !== String(staffId)));
 
-    if (!result.success) {
-      setMessage(result.message || "Failed to delete staff account.");
+      setMessage(result.message || "Staff account deleted successfully.");
+      setIsSuccess(true);
+
+      router.refresh();
+    } catch (error) {
+      console.error("DELETE_STAFF_UI_ERROR", error);
+      setMessage("Failed to delete staff account.");
       setIsSuccess(false);
-      return;
+    } finally {
+      setDeletingId("");
     }
-
-    setStaff((prev) =>
-      prev.filter((user) => user._id !== staffId)
-    );
-
-    setMessage(
-      result.message || "Staff account deleted successfully."
-    );
-    setIsSuccess(true);
-  } catch (error) {
-    console.error("DELETE_STAFF_UI_ERROR", error);
-
-    setMessage("Failed to delete staff account.");
-    setIsSuccess(false);
-  } finally {
-    setDeletingId("");
-  }
-};
+  };
 
   const filteredStaff = useMemo(() => {
     const keyword = searchText.toLowerCase().trim();
@@ -518,9 +522,7 @@ export default function AdminStaffPage() {
 
                     <Input
                       value={formData.nic}
-                      onChange={(event) =>
-                        updateField("nic", event.target.value)
-                      }
+                      onChange={(event) => updateField("nic", event.target.value)}
                       placeholder="Enter NIC number"
                       className="h-12 rounded-2xl border-[#d9c8b8] bg-[#f8f1e8]/80 pl-11 text-sm text-[#2b241f] placeholder:text-[#9b6f45]/55 focus-visible:ring-[#9b6f45]/30"
                     />
@@ -669,9 +671,7 @@ export default function AdminStaffPage() {
 
                   <Input
                     value={formData.jobRole}
-                    onChange={(event) =>
-                      updateField("jobRole", event.target.value)
-                    }
+                    onChange={(event) => updateField("jobRole", event.target.value)}
                     placeholder="Example: Welfare Officer"
                     className="mt-2 h-12 rounded-2xl border-[#d9c8b8] bg-[#f8f1e8]/80 text-sm text-[#2b241f] placeholder:text-[#9b6f45]/55 focus-visible:ring-[#9b6f45]/30"
                   />
@@ -739,147 +739,147 @@ export default function AdminStaffPage() {
                   />
                 </div>
               </div>
-                  <div className="relative overflow-hidden rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/70">
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[1220px] table-fixed border-collapse text-left text-sm">
-                        <thead className="bg-[#efe2d2] text-xs uppercase tracking-wide text-[#6b5e54]">
-                          <tr>
-                            <th className="w-[220px] px-5 py-4 align-middle font-extrabold">
-                              Staff
-                            </th>
-                            <th className="w-[140px] px-5 py-4 align-middle font-extrabold">
-                              NIC
-                            </th>
-                            <th className="w-[230px] px-5 py-4 align-middle font-extrabold">
-                              Contact
-                            </th>
-                            <th className="w-[165px] px-5 py-4 text-center align-middle font-extrabold">
-                              Role
-                            </th>
-                            <th className="w-[160px] px-5 py-4 align-middle font-extrabold">
-                              Department
-                            </th>
-                            <th className="w-[140px] px-5 py-4 text-center align-middle font-extrabold">
-                              Employee ID
-                            </th>
-                            <th className="w-[130px] px-5 py-4 text-center align-middle font-extrabold">
-                              Status
-                            </th>
-                            <th className="w-[130px] px-5 py-4 text-center align-middle font-extrabold">
-                              Created
-                            </th>
-                            <th className="w-[150px] px-5 py-4 text-center align-middle font-extrabold">
-                              Actions
-                            </th>
+              <div className="relative overflow-hidden rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/70">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1220px] table-fixed border-collapse text-left text-sm">
+                    <thead className="bg-[#efe2d2] text-xs uppercase tracking-wide text-[#6b5e54]">
+                      <tr>
+                        <th className="w-[220px] px-5 py-4 align-middle font-extrabold">
+                          Staff
+                        </th>
+                        <th className="w-[140px] px-5 py-4 align-middle font-extrabold">
+                          NIC
+                        </th>
+                        <th className="w-[230px] px-5 py-4 align-middle font-extrabold">
+                          Contact
+                        </th>
+                        <th className="w-[165px] px-5 py-4 text-center align-middle font-extrabold">
+                          Role
+                        </th>
+                        <th className="w-[160px] px-5 py-4 align-middle font-extrabold">
+                          Department
+                        </th>
+                        <th className="w-[140px] px-5 py-4 text-center align-middle font-extrabold">
+                          Employee ID
+                        </th>
+                        <th className="w-[130px] px-5 py-4 text-center align-middle font-extrabold">
+                          Status
+                        </th>
+                        <th className="w-[130px] px-5 py-4 text-center align-middle font-extrabold">
+                          Created
+                        </th>
+                        <th className="w-[150px] px-5 py-4 text-center align-middle font-extrabold">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-[#d9c8b8]">
+                      {filteredStaff.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={9}
+                            className="px-5 py-10 text-center text-[#6b5e54]"
+                          >
+                            No staff accounts found.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredStaff.map((user) => (
+                          <tr
+                            key={user._id}
+                            className="bg-[#fbf7ef]/60 transition-all duration-300 hover:bg-[#fffaf3] hover:shadow-[inset_4px_0_0_rgba(155,111,69,0.75)]"
+                          >
+                            <td className="px-5 py-4 align-middle">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] text-sm font-extrabold text-[#9b6f45] shadow-lg shadow-[#2c241f]/10">
+                                  {user.fullName?.charAt(0)?.toUpperCase() || "S"}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <p className="truncate font-bold text-[#2b241f]">
+                                    {user.fullName || "Unnamed Staff"}
+                                  </p>
+                                  <p className="mt-1 truncate text-xs text-[#79695d]">
+                                    {user.jobRole || getRoleLabel(user.role)}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 align-middle text-[#6b5e54]">
+                              <p className="truncate">{user.nic || "N/A"}</p>
+                            </td>
+
+                            <td className="px-5 py-4 align-middle">
+                              <div className="min-w-0">
+                                <p className="truncate text-[#6b5e54]">
+                                  {user.email || "N/A"}
+                                </p>
+                                <p className="mt-1 truncate text-xs font-semibold text-[#9b6f45]">
+                                  {user.phone || "N/A"}
+                                </p>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 text-center align-middle">
+                              <span
+                                className={`inline-flex min-w-[130px] items-center justify-center rounded-full border px-3 py-1.5 text-xs font-extrabold ${getRoleStyle(
+                                  user.role
+                                )}`}
+                              >
+                                {getRoleLabel(user.role)}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 align-middle text-[#6b5e54]">
+                              <p className="truncate">{user.department || "N/A"}</p>
+                            </td>
+
+                            <td className="px-5 py-4 text-center align-middle text-[#6b5e54]">
+                              <span className="whitespace-nowrap">
+                                {user.employeeId || "N/A"}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 text-center align-middle">
+                              <span
+                                className={`inline-flex min-w-[105px] items-center justify-center rounded-full border px-3 py-1.5 text-xs font-extrabold capitalize ${getStatusStyle(
+                                  user.accountStatus
+                                )}`}
+                              >
+                                {user.accountStatus || "active"}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 text-center align-middle text-[#79695d]">
+                              <span className="whitespace-nowrap">
+                                {formatDate(user.createdAt)}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4 text-center align-middle">
+                              <Button
+                                type="button"
+                                onClick={() => handleDeleteStaff(user._id, user.fullName)}
+                                disabled={deletingId === user._id}
+                                className="rounded-2xl bg-red-600 px-4 font-extrabold text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {deletingId === user._id ? (
+                                  <Loader2 size={16} className="mr-2 animate-spin" />
+                                ) : (
+                                  <Trash2 size={16} className="mr-2" />
+                                )}
+                                Delete
+                              </Button>
+                            </td>
                           </tr>
-                        </thead>
-
-                        <tbody className="divide-y divide-[#d9c8b8]">
-                          {filteredStaff.length === 0 ? (
-                            <tr>
-                              <td
-                                colSpan={9}
-                                className="px-5 py-10 text-center text-[#6b5e54]"
-                              >
-                                No staff accounts found.
-                              </td>
-                            </tr>
-                          ) : (
-                            filteredStaff.map((user) => (
-                              <tr
-                                key={user._id}
-                                className="bg-[#fbf7ef]/60 transition-all duration-300 hover:bg-[#fffaf3] hover:shadow-[inset_4px_0_0_rgba(155,111,69,0.75)]"
-                              >
-                                <td className="px-5 py-4 align-middle">
-                                  <div className="flex min-w-0 items-center gap-3">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] text-sm font-extrabold text-[#9b6f45] shadow-lg shadow-[#2c241f]/10">
-                                      {user.fullName?.charAt(0)?.toUpperCase() || "S"}
-                                    </div>
-
-                                    <div className="min-w-0">
-                                      <p className="truncate font-bold text-[#2b241f]">
-                                        {user.fullName || "Unnamed Staff"}
-                                      </p>
-                                      <p className="mt-1 truncate text-xs text-[#79695d]">
-                                        {user.jobRole || getRoleLabel(user.role)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                <td className="px-5 py-4 align-middle text-[#6b5e54]">
-                                  <p className="truncate">{user.nic || "N/A"}</p>
-                                </td>
-
-                                <td className="px-5 py-4 align-middle">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[#6b5e54]">
-                                      {user.email || "N/A"}
-                                    </p>
-                                    <p className="mt-1 truncate text-xs font-semibold text-[#9b6f45]">
-                                      {user.phone || "N/A"}
-                                    </p>
-                                  </div>
-                                </td>
-
-                                <td className="px-5 py-4 text-center align-middle">
-                                  <span
-                                    className={`inline-flex min-w-[130px] items-center justify-center rounded-full border px-3 py-1.5 text-xs font-extrabold ${getRoleStyle(
-                                      user.role
-                                    )}`}
-                                  >
-                                    {getRoleLabel(user.role)}
-                                  </span>
-                                </td>
-
-                                <td className="px-5 py-4 align-middle text-[#6b5e54]">
-                                  <p className="truncate">{user.department || "N/A"}</p>
-                                </td>
-
-                                <td className="px-5 py-4 text-center align-middle text-[#6b5e54]">
-                                  <span className="whitespace-nowrap">
-                                    {user.employeeId || "N/A"}
-                                  </span>
-                                </td>
-
-                                <td className="px-5 py-4 text-center align-middle">
-                                  <span
-                                    className={`inline-flex min-w-[105px] items-center justify-center rounded-full border px-3 py-1.5 text-xs font-extrabold capitalize ${getStatusStyle(
-                                      user.accountStatus
-                                    )}`}
-                                  >
-                                    {user.accountStatus || "active"}
-                                  </span>
-                                </td>
-
-                                <td className="px-5 py-4 text-center align-middle text-[#79695d]">
-                                  <span className="whitespace-nowrap">
-                                    {formatDate(user.createdAt)}
-                                  </span>
-                                </td>
-
-                                <td className="px-5 py-4 text-center align-middle">
-                                  <Button
-                                    type="button"
-                                    onClick={() => handleDeleteStaff(user._id, user.fullName)}
-                                    disabled={deletingId === user._id}
-                                    className="rounded-2xl bg-red-600 px-4 font-extrabold text-white shadow-lg shadow-red-600/20 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    {deletingId === user._id ? (
-                                      <Loader2 size={16} className="mr-2 animate-spin" />
-                                    ) : (
-                                      <Trash2 size={16} className="mr-2" />
-                                    )}
-                                    Delete
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               <div className="relative mt-4 flex flex-col justify-between gap-3 text-sm text-[#6b5e54] md:flex-row">
                 <p>
                   Showing{" "}

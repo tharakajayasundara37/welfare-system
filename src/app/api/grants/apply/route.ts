@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import Grant from "@/models/Grant";
+import User from "@/models/User";
+import Notification from "@/models/Notification";
 
 type GrantDocument = {
   documentType: string;
   fileName: string;
-  fileUrl: string; // මෙතනට සේව් වෙන්නේ Base64 Data URI එකක්
+  fileUrl: string;
   mimeType: string;
   size: number;
 };
@@ -36,20 +38,18 @@ async function generateGrantId() {
   return `GR-${year}-${String(nextNumber).padStart(4, "0")}`;
 }
 
-// 🛠️ Vercel වල වැඩ කරන්න ෆයිල් එක Base64 කරලා Database එකටම දාන අලුත් Function එක
 async function convertFileToBase64(file: File, documentType: string): Promise<GrantDocument> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
   
   const mimeType = file.type || "application/octet-stream";
-  // කෙලින්ම Database එකේ store කරන්න Base64 string එකක් සාදා ගැනීම
   const base64Data = buffer.toString("base64");
   const dataUrl = `data:${mimeType};base64,${base64Data}`;
 
   return {
     documentType,
     fileName: file.name,
-    fileUrl: dataUrl, // Frontend එකේ <img> tag එකකට වුනත් direct දාන්න පුළුවන් string එකක්
+    fileUrl: dataUrl, 
     mimeType,
     size: file.size || 0,
   };
@@ -63,7 +63,7 @@ function getPriorityLevel(grantType: string, requestedAmount: number) {
     return "emergency";
   }
 
-  if (grantType === "Medical Grant" || requestedAmount >= 100000) {
+  if (requestedAmount >= 100000) {
     return "high";
   }
 
@@ -93,15 +93,11 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     const phoneNumber = normalizeText(formData.get("phoneNumber"));
-    const emergencyPhoneNumber = normalizeText(
-      formData.get("emergencyPhoneNumber")
-    );
+    const emergencyPhoneNumber = normalizeText(formData.get("emergencyPhoneNumber"));
     const grantType = normalizeText(formData.get("grantType"));
     const requestedAmount = Number(formData.get("requestedAmount") || 0);
     const reason = normalizeText(formData.get("reason"));
-    const relationshipWithDeceased = normalizeText(
-      formData.get("relationshipWithDeceased")
-    );
+    const relationshipWithDeceased = normalizeText(formData.get("relationshipWithDeceased"));
 
     if (
       !phoneNumber ||
@@ -120,11 +116,8 @@ export async function POST(request: NextRequest) {
     }
 
     const validGrantTypes = [
-      "Medical Grant",
-      "Education Grant",
       "Funeral Support Grant",
       "Disaster Relief Grant",
-      "Hardship Grant",
     ];
 
     if (!validGrantTypes.includes(grantType)) {
@@ -163,21 +156,16 @@ export async function POST(request: NextRequest) {
       "nicFront",
       "nicBack",
       "employeeProof",
-      "medicalDocument",
-      "educationDocument",
       "deathCertificate",
       "relationshipProof",
       "disasterProof",
-      "hardshipProof",
       "bankStatement",
     ];
 
-    // 🔄 ෆයිල් සේව් කරන ලූප් එක (අලුත් Base64 ක්‍රමයට)
     for (const key of documentKeys) {
       const file = formData.get(key);
 
       if (file instanceof File && file.size > 0) {
-        // ලෝකල් එකට ලියන්නේ නැතුව Base64 කරලා array එකට දානවා
         const savedFile = await convertFileToBase64(file, key);
         documents.push(savedFile);
       }
@@ -218,10 +206,29 @@ export async function POST(request: NextRequest) {
       documents,
     });
 
+    const welfareOfficers = await User.find({ role: "welfare_officer" }).select("_id").lean();
+
+    if (welfareOfficers.length > 0) {
+      const notifications = welfareOfficers.map((officer) => ({
+        userId: officer._id,
+        type: "grant",
+        title: "New Grant Application",
+        message: `${currentUser.fullName || "A member"} has applied for a ${grantType}.`,
+        priority: grant.priorityLevel === "emergency" ? "high" : "normal",
+        link: "/dashboard/officer/loans",
+        metadata: {
+          grantId: grant._id.toString(),
+          memberId: currentUser._id,
+        },
+      }));
+
+      await Notification.insertMany(notifications);
+    }
+
     return NextResponse.json(
       {
         success: true,
-        message: "Grant application submitted successfully.",
+        message: "Grant application submitted successfully and sent to Welfare Officers.",
         grant: {
           id: grant._id.toString(),
           grantId: grant.grantId,

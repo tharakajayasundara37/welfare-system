@@ -20,10 +20,29 @@ import {
   Settings,
   TrendingUp,
   WalletCards,
+  CreditCard,
+  RefreshCw,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+
+interface UnpaidFee {
+  id: string;
+  month: string;
+  year: number;
+  amount: number;
+  dueDate: string;
+}
+
+interface OverdueInstallment {
+  id: string;
+  loanType: string;
+  installmentNumber: number;
+  amount: number;
+  penaltyAmount: number;
+  dueDate: string;
+}
 
 interface MonthlyDisbursement {
   month: string;
@@ -74,6 +93,7 @@ interface RecentApplication {
   nextEMIDueDate: string | null;
   createdAt: string | null;
 }
+
 interface DashboardMeeting {
   id: string;
   title: string;
@@ -86,6 +106,7 @@ interface DashboardMeeting {
   priority: string;
   targetAudience: string;
 }
+
 interface DashboardStats {
   totalLoans: number;
   activeLoans: number;
@@ -107,8 +128,10 @@ interface MemberDashboardResponse {
   stats?: MemberStats;
   recentApplications?: RecentApplication[];
   meeting?: DashboardMeeting | null;
+  overdueInstallment?: OverdueInstallment | null;
   message?: string;
 }
+
 const defaultStats: DashboardStats = {
   totalLoans: 0,
   activeLoans: 0,
@@ -130,7 +153,7 @@ async function readJsonResponse(response: Response) {
   if (!contentType?.includes("application/json")) {
     await response.text();
     throw new Error(
-      "API returned HTML instead of JSON. Check /api/member/dashboard route path."
+      "API returned HTML instead of JSON. Check route paths."
     );
   }
 
@@ -138,7 +161,7 @@ async function readJsonResponse(response: Response) {
 }
 
 function formatCurrency(amount: number) {
-  return `LKR ${Number(amount || 0).toLocaleString()}`;
+  return `LKR ${Number(amount || 0).toLocaleString("en-LK")}`;
 }
 
 function getPercentage(value: number, total: number) {
@@ -328,40 +351,46 @@ function QuickLink({
 export default function MemberDashboardPage() {
   const [member, setMember] = useState<MemberInfo | null>(null);
   const [stats, setStats] = useState<DashboardStats>(defaultStats);
-  const [recentApplications, setRecentApplications] = useState<
-    RecentApplication[]
-  >([]);
+  const [recentApplications, setRecentApplications] = useState<RecentApplication[]>([]);
   const [meeting, setMeeting] = useState<DashboardMeeting | null>(null);
+  const [unpaidFee, setUnpaidFee] = useState<UnpaidFee | null>(null);
+  const [overdueInstallment, setOverdueInstallment] = useState<OverdueInstallment | null>(null);
   const [todayText, setTodayText] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function loadStats() {
     try {
-      const response = await fetch("/api/member/dashboard", {
-        method: "GET",
-        cache: "no-store",
-      });
+      const [dashboardRes, feeRes] = await Promise.all([
+        fetch("/api/member/dashboard", { method: "GET", cache: "no-store" }),
+        fetch("/api/member/monthly-fee/status", { method: "GET", cache: "no-store" })
+      ]);
 
-      const result = (await readJsonResponse(
-        response
-      )) as MemberDashboardResponse;
+      const result = (await readJsonResponse(dashboardRes)) as MemberDashboardResponse;
+      const feeResult = await readJsonResponse(feeRes);
 
       if (result.success) {
         const applications = result.recentApplications || [];
 
-        const totalRequestedAmount = applications.reduce(
-          (sum, loan) => sum + Number(loan.amount || 0),
-          0
-        );
-
-        const totalEmiAmount = applications.reduce(
-          (sum, loan) => sum + Number(loan.emiAmount || 0),
-          0
-        );
+        const totalRequestedAmount = applications.reduce((sum, loan) => sum + Number(loan.amount || 0), 0);
+        const totalEmiAmount = applications.reduce((sum, loan) => sum + Number(loan.emiAmount || 0), 0);
 
         setMember(result.member || null);
         setRecentApplications(applications);
         setMeeting(result.meeting || null);
+
+        if (result.overdueInstallment) {
+          const formattedDate = new Date(result.overdueInstallment.dueDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric"
+          });
+          setOverdueInstallment({
+            ...result.overdueInstallment,
+            dueDate: formattedDate
+          });
+        } else {
+          setOverdueInstallment(null);
+        }
 
         setStats({
           ...defaultStats,
@@ -377,6 +406,28 @@ export default function MemberDashboardPage() {
           recentAnnouncements: buildRecentAnnouncements(applications),
         });
       }
+
+      if (feeResult.success && feeResult.payment) {
+        const payment = feeResult.payment;
+        if (payment.isOverdue || payment.status === "overdue") {
+          const formattedDate = new Date(payment.dueDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric"
+          });
+
+          setUnpaidFee({
+            id: payment.id,
+            month: payment.monthName,
+            year: payment.year,
+            amount: payment.amount,
+            dueDate: formattedDate,
+          });
+        } else {
+          setUnpaidFee(null); 
+        }
+      }
+
     } catch (error) {
       console.error("LOAD_MEMBER_DASHBOARD_ERROR", error);
     } finally {
@@ -393,7 +444,6 @@ export default function MemberDashboardPage() {
           year: "numeric",
         })
       );
-
       void loadStats();
     }, 0);
 
@@ -407,36 +457,22 @@ export default function MemberDashboardPage() {
     };
   }, []);
 
-  const approvedPercentage = getPercentage(
-    stats.approvedLoans,
-    stats.totalLoans
-  );
+  const approvedPercentage = getPercentage(stats.approvedLoans, stats.totalLoans);
   const pendingPercentage = getPercentage(stats.pendingLoans, stats.totalLoans);
-  const rejectedPercentage = getPercentage(
-    stats.rejectedLoans,
-    stats.totalLoans
-  );
+  const rejectedPercentage = getPercentage(stats.rejectedLoans, stats.totalLoans);
 
-  const maxDisbursementAmount = Math.max(
-    ...stats.monthlyDisbursements.map((item) => item.amount),
-    1
-  );
+  const maxDisbursementAmount = Math.max(...stats.monthlyDisbursements.map((item) => item.amount), 1);
+  const maxMemberGrowth = Math.max(...stats.memberGrowth.map((item) => Math.max(item.total, item.active)), 1);
 
-  const maxMemberGrowth = Math.max(
-    ...stats.memberGrowth.map((item) => Math.max(item.total, item.active)),
-    1
-  );
-
-  const announcements =
-    stats.recentAnnouncements.length > 0
-      ? stats.recentAnnouncements
-      : [
-          {
-            _id: "empty-1",
-            title: "No recent loan activity",
-            desc: "Apply for a welfare loan to see your latest updates here.",
-          },
-        ];
+  const announcements = stats.recentAnnouncements.length > 0
+    ? stats.recentAnnouncements
+    : [
+        {
+          _id: "empty-1",
+          title: "No recent loan activity",
+          desc: "Apply for a welfare loan to see your latest updates here.",
+        },
+      ];
 
   if (loading) {
     return (
@@ -462,11 +498,9 @@ export default function MemberDashboardPage() {
               <p className="text-xs font-extrabold uppercase tracking-[0.35em] text-[#9b6f45]">
                 Welfare
               </p>
-
               <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[#2b241f] md:text-5xl">
                 Member Dashboard
               </h1>
-
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6b5e54]">
                 Welcome {member?.fullName || "Member"}. Track your welfare
                 loans, approvals, payments, installments and notifications.
@@ -486,131 +520,228 @@ export default function MemberDashboardPage() {
                   <TrendingUp className="mr-2" size={17} />
                   Apply Loan
                 </Button>
-                </Link>
+              </Link>
             </div>
           </div>
         </section>
 
-{meeting && (
-  <section className="relative overflow-hidden rounded-[34px] border border-[#d9c8b8] bg-[#f7f1ea] shadow-[0_30px_100px_rgba(44,36,31,0.12)]">
-    <div className="grid lg:grid-cols-[1.2fr_0.8fr]">
-      {/* LEFT SIDE */}
-      <div className="relative overflow-hidden bg-[#f3dfcd] p-8 text-[#2c241f]">
-        <div className="absolute left-5 top-5 h-3 w-3 bg-[#d8c0aa]" />
-        <div className="absolute right-5 top-5 h-3 w-3 bg-[#d8c0aa]" />
-        <div className="absolute bottom-5 left-5 h-3 w-3 bg-[#d8c0aa]" />
+        {/* OVERDUE LOAN INSTALLMENT BANNER */}
+        {overdueInstallment && (
+          <section className="relative overflow-hidden rounded-[34px] border border-red-500/30 bg-[#fbf0f0]/90 p-7 shadow-sm backdrop-blur-xl">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex items-start gap-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-lg shadow-red-500/30">
+                  <AlertTriangle size={28} />
+                </div>
+                
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-2xl font-extrabold text-[#2b241f]">{overdueInstallment.loanType} Installment Overdue</h2>
+                    <span className="rounded-full border border-red-500/30 bg-red-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-red-700">
+                      Overdue
+                    </span>
+                    {overdueInstallment.penaltyAmount > 0 && (
+                      <span className="rounded-full bg-red-600 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white shadow-sm">
+                        Penalty Applied
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 max-w-3xl text-sm text-[#6b5e54]">
+                    Your installment <span className="font-bold text-[#2b241f]">#{overdueInstallment.installmentNumber}</span> is currently overdue. Please settle this amount immediately.
+                  </p>
 
-        <div className="inline-flex items-center gap-2 rounded-xl bg-[#4b2d27] px-4 py-2 text-xs font-black uppercase text-[#f7f1ea]">
-          <Megaphone size={15} />
-          Meeting Notice
-        </div>
+                  <div className="mt-6 flex flex-wrap gap-4">
+                    <div className="rounded-2xl border border-red-500/20 bg-white px-6 py-4 shadow-sm">
+                      <p className="text-xs font-bold text-red-600">Total Payable</p>
+                      <p className="mt-1 text-xl font-extrabold text-[#2b241f]">{formatCurrency(overdueInstallment.amount)}</p>
+                    </div>
+                    {overdueInstallment.penaltyAmount > 0 && (
+                      <div className="rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef]/90 px-6 py-4 shadow-sm">
+                        <p className="text-xs font-bold text-[#9b6f45]">Included Penalty</p>
+                        <p className="mt-1 text-base font-extrabold text-[#2b241f]">{formatCurrency(overdueInstallment.penaltyAmount)}</p>
+                      </div>
+                    )}
+                    <div className="rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef]/90 px-6 py-4 shadow-sm">
+                      <p className="text-xs font-bold text-[#9b6f45]">Due Date</p>
+                      <p className="mt-1 text-base font-extrabold text-[#2b241f]">{overdueInstallment.dueDate}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-        <p className="mt-8 text-sm font-black uppercase tracking-[0.45em] text-[#6b453d]">
-          Welfare Society
-        </p>
-
-        <h2 className="mt-6 text-6xl font-black uppercase leading-none tracking-tight text-[#4b2d27] md:text-7xl">
-          {meeting.title}
-        </h2>
-
-        <p className="mt-4 max-w-xl text-base font-black leading-7 text-[#4b2d27]">
-          {meeting.reason}
-        </p>
-
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-[#d8c0aa] bg-[#ead6c4] p-4">
-            <div className="flex items-center gap-3">
-              <CalendarClock size={28} className="text-[#6b453d]" />
-
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
-                  Date
-                </p>
-
-                <p className="text-xl font-black text-[#2c241f]">
-                  {meeting.meetingDate}
-                </p>
+              <div className="flex shrink-0 flex-row gap-3 lg:flex-col justify-end">
+                <Link href="/dashboard/installments">
+                  <Button className="h-12 w-full min-w-[140px] rounded-2xl bg-red-600 px-6 font-extrabold text-white shadow-lg shadow-red-600/20 hover:bg-red-700">
+                    <CreditCard className="mr-2" size={18} /> Pay Installment
+                  </Button>
+                </Link>
               </div>
             </div>
-          </div>
+          </section>
+        )}
 
-          <div className="rounded-2xl border border-[#d8c0aa] bg-[#ead6c4] p-4">
-            <div className="flex items-center gap-3">
-              <Clock3 size={28} className="text-[#6b453d]" />
+        {/* OVERDUE FEE BANNER SECTION */}
+        {unpaidFee && (
+          <section className="relative overflow-hidden rounded-[34px] border border-orange-500/30 bg-[#fdf5ed]/90 p-7 shadow-sm backdrop-blur-xl">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex items-start gap-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-orange-500/20 text-orange-700">
+                  <AlertTriangle size={28} />
+                </div>
+                
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-2xl font-extrabold text-[#2b241f]">Monthly Welfare Fee Overdue</h2>
+                    <span className="rounded-full border border-orange-500/30 bg-orange-100 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-orange-700">
+                      Overdue
+                    </span>
+                  </div>
+                  <p className="mt-2 max-w-3xl text-sm text-[#6b5e54]">
+                    Your monthly welfare contribution for {unpaidFee.month} {unpaidFee.year} is overdue. Please complete the payment.
+                  </p>
 
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
-                  Time
-                </p>
+                  <div className="mt-6 flex flex-wrap gap-4">
+                    <div className="rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef]/90 px-6 py-4 shadow-sm">
+                      <p className="text-xs font-bold text-[#9b6f45]">Amount</p>
+                      <p className="mt-1 text-base font-extrabold text-[#2b241f]">{formatCurrency(unpaidFee.amount)}</p>
+                    </div>
+                    <div className="rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef]/90 px-6 py-4 shadow-sm">
+                      <p className="text-xs font-bold text-[#9b6f45]">Due Date</p>
+                      <p className="mt-1 text-base font-extrabold text-[#2b241f]">{unpaidFee.dueDate}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                <p className="text-xl font-black text-[#2c241f]">
-                  {meeting.meetingTime}
-                </p>
+              <div className="flex shrink-0 flex-row gap-3 lg:flex-col justify-end">
+                <Link href="/dashboard/payments">
+                  <Button className="h-12 w-full min-w-[140px] rounded-2xl bg-[#9b6f45] px-6 text-white shadow-lg shadow-[#9b6f45]/20 hover:bg-[#835c38]">
+                    <CreditCard className="mr-2" size={18} /> Pay Fee
+                  </Button>
+                </Link>
+                <Button 
+                  onClick={() => loadStats()}
+                  className="h-12 w-full min-w-[140px] rounded-2xl bg-[#2c241f] px-6 text-white shadow-lg shadow-[#2c241f]/20 hover:bg-[#1a1512]"
+                >
+                  <RefreshCw className="mr-2" size={18} /> Refresh
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
+          </section>
+        )}
 
-        <div className="mt-6 flex items-start gap-3">
-          <MapPin size={24} className="mt-1 text-[#6b453d]" />
+        {meeting && (
+          <section className="relative overflow-hidden rounded-[34px] border border-[#d9c8b8] bg-[#f7f1ea] shadow-[0_30px_100px_rgba(44,36,31,0.12)]">
+            <div className="grid lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="relative overflow-hidden bg-[#f3dfcd] p-8 text-[#2c241f]">
+                <div className="absolute left-5 top-5 h-3 w-3 bg-[#d8c0aa]" />
+                <div className="absolute right-5 top-5 h-3 w-3 bg-[#d8c0aa]" />
+                <div className="absolute bottom-5 left-5 h-3 w-3 bg-[#d8c0aa]" />
 
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
-              Venue
-            </p>
+                <div className="inline-flex items-center gap-2 rounded-xl bg-[#4b2d27] px-4 py-2 text-xs font-black uppercase text-[#f7f1ea]">
+                  <Megaphone size={15} />
+                  Meeting Notice
+                </div>
 
-            <p className="text-xl font-black text-[#2c241f]">
-              {meeting.venue}
-            </p>
-          </div>
-        </div>
-      </div>
+                <p className="mt-8 text-sm font-black uppercase tracking-[0.45em] text-[#6b453d]">
+                  Welfare Society
+                </p>
 
-      {/* RIGHT SIDE */}
-      <div className="relative flex items-center justify-center bg-[#f7f1ea] p-8">
-        <div className="relative w-full max-w-sm border-[3px] border-[#4b2d27] bg-[#f3dfcd] p-8 text-center shadow-xl">
-          <div className="absolute -left-3 -top-3 h-6 w-6 bg-[#d8c0aa]" />
-          <div className="absolute -right-3 -top-3 h-6 w-6 bg-[#d8c0aa]" />
-          <div className="absolute -bottom-3 -left-3 h-6 w-6 bg-[#4b2d27]" />
-          <div className="absolute -bottom-3 -right-3 h-6 w-6 bg-[#4b2d27]" />
+                <h2 className="mt-6 text-6xl font-black uppercase leading-none tracking-tight text-[#4b2d27] md:text-7xl">
+                  {meeting.title}
+                </h2>
 
-          <p className="text-xs font-black uppercase tracking-[0.45em] text-[#4b2d27]">
-            Special Meeting
-          </p>
+                <p className="mt-4 max-w-xl text-base font-black leading-7 text-[#4b2d27]">
+                  {meeting.reason}
+                </p>
 
-          <div className="mt-6 bg-[#d8c0aa] p-5">
-            <h3 className="text-4xl font-black uppercase leading-none text-[#2c241f]">
-              {meeting.title}
-            </h3>
-          </div>
+                <div className="mt-8 grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-[#d8c0aa] bg-[#ead6c4] p-4">
+                    <div className="flex items-center gap-3">
+                      <CalendarClock size={28} className="text-[#6b453d]" />
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
+                          Date
+                        </p>
+                        <p className="text-xl font-black text-[#2c241f]">
+                          {meeting.meetingDate}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-          <div className="mt-8">
-            <CalendarClock
-              size={120}
-              className="mx-auto text-[#4b2d27]"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+                  <div className="rounded-2xl border border-[#d8c0aa] bg-[#ead6c4] p-4">
+                    <div className="flex items-center gap-3">
+                      <Clock3 size={28} className="text-[#6b453d]" />
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
+                          Time
+                        </p>
+                        <p className="text-xl font-black text-[#2c241f]">
+                          {meeting.meetingTime}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-    {/* BOTTOM BAR */}
-    <div className="flex flex-col gap-4 border-t border-[#d9c8b8] bg-[#f7f1ea] p-5 md:flex-row md:items-center md:justify-between">
-      <div className="flex flex-wrap gap-6 text-base font-black text-[#4b2d27]">
-        <span>{meeting.meetingDate}</span>
-        <span>{meeting.meetingTime}</span>
-        <span>{meeting.venue}</span>
-      </div>
+                <div className="mt-6 flex items-start gap-3">
+                  <MapPin size={24} className="mt-1 text-[#6b453d]" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-[#6b453d]">
+                      Venue
+                    </p>
+                    <p className="text-xl font-black text-[#2c241f]">
+                      {meeting.venue}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-      <Link
-        href={`/dashboard/meeting-notices/${meeting.id}`}
-        className="inline-flex items-center justify-center rounded-2xl bg-[#4b2d27] px-6 py-3 text-base font-black uppercase tracking-[0.15em] text-white transition hover:bg-[#6b453d]"
-      >
-        View Details →
-      </Link>
-    </div>
-  </section>
-)}
+              <div className="relative flex items-center justify-center bg-[#f7f1ea] p-8">
+                <div className="relative w-full max-w-sm border-[3px] border-[#4b2d27] bg-[#f3dfcd] p-8 text-center shadow-xl">
+                  <div className="absolute -left-3 -top-3 h-6 w-6 bg-[#d8c0aa]" />
+                  <div className="absolute -right-3 -top-3 h-6 w-6 bg-[#d8c0aa]" />
+                  <div className="absolute -bottom-3 -left-3 h-6 w-6 bg-[#4b2d27]" />
+                  <div className="absolute -bottom-3 -right-3 h-6 w-6 bg-[#4b2d27]" />
+
+                  <p className="text-xs font-black uppercase tracking-[0.45em] text-[#4b2d27]">
+                    Special Meeting
+                  </p>
+
+                  <div className="mt-6 bg-[#d8c0aa] p-5">
+                    <h3 className="text-4xl font-black uppercase leading-none text-[#2c241f]">
+                      {meeting.title}
+                    </h3>
+                  </div>
+
+                  <div className="mt-8">
+                    <CalendarClock
+                      size={120}
+                      className="mx-auto text-[#4b2d27]"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 border-t border-[#d9c8b8] bg-[#f7f1ea] p-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap gap-6 text-base font-black text-[#4b2d27]">
+                <span>{meeting.meetingDate}</span>
+                <span>{meeting.meetingTime}</span>
+                <span>{meeting.venue}</span>
+              </div>
+
+              <Link
+                href={`/dashboard/meeting-notices/${meeting.id}`}
+                className="inline-flex items-center justify-center rounded-2xl bg-[#4b2d27] px-6 py-3 text-base font-black uppercase tracking-[0.15em] text-white transition hover:bg-[#6b453d]"
+              >
+                View Details →
+              </Link>
+            </div>
+          </section>
+        )}
+
         <section className="relative grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total Loans"
@@ -782,12 +913,12 @@ export default function MemberDashboardPage() {
                   </p>
                 </div>
 
-             <Link
-                href="/dashboard/loans"
-                className="text-sm font-bold text-[#9b6f45]"
-              >
-                View All
-              </Link>
+                <Link
+                  href="/dashboard/loans"
+                  className="text-sm font-bold text-[#9b6f45]"
+                >
+                  View All
+                </Link>
               </div>
 
               <div className="relative space-y-3">

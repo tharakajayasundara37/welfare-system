@@ -32,10 +32,10 @@ function normalizeThemeMode(themeMode?: string): ThemeMode {
 
 export async function getCurrentUser() {
   try {
-    // 1. Issellama DB eka connect karagannawa
+    // 1. Establish the database connection first
     await dbConnect();
     
-    // 2. DB connect unata passe thamai User model eka load karanne (Cold Start fix)
+    // 2. Dynamically import the User model after connection (fixes Mongoose buffering/cold start issues)
     const User = (await import("@/models/User")).default;
 
     const cookieStore = await cookies();
