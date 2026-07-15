@@ -6,6 +6,10 @@ import Loan from "@/models/Loan";
 import MeetingNotice from "@/models/MeetingNotice";
 import Installment from "@/models/Installment";
 
+// Prevent Next.js from caching this route on Vercel
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type RawLoan = {
   _id: {
     toString: () => string;
@@ -156,7 +160,6 @@ export async function GET() {
         .sort({ meetingAt: 1 })
         .lean<RawMeeting | null>(),
 
-      // Fetch the oldest overdue installment
       Installment.findOne({
         userId,
         status: "overdue",

@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
-
 import MonthlyPayment from "@/models/MonthlyPayment";
+
+// Prevent Next.js from caching this route on Vercel
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function getMonthInfo() {
   const now = new Date();
@@ -115,8 +118,7 @@ export async function GET() {
           paymentMethod: payment?.paymentMethod || "",
           transactionReference: payment?.transactionReference || "",
           receiptNumber: payment?.receiptNumber || "",
-          isOverdue:
-            payment?.status === "paid" ? false : isOverdue,
+          isOverdue: payment?.status === "paid" ? false : isOverdue,
         },
       },
       { status: 200 }
