@@ -125,14 +125,6 @@ const memberMenuItems: MenuItem[] = [
     hoverBg: "hover:bg-[#d8ad80]/15",
   },
   {
-    title: "Apply Grant",
-    href: "/dashboard/grants/apply",
-    icon: HandHeart,
-    iconColor: "text-[#d8ad80]",
-    iconBg: "bg-[#d8ad80]/15",
-    hoverBg: "hover:bg-[#d8ad80]/15",
-  },
-  {
     title: "Loan Offers",
     href: "/dashboard/loans/offers",
     icon: FileText,
