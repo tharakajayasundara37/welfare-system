@@ -107,6 +107,17 @@ interface DashboardMeeting {
   targetAudience: string;
 }
 
+interface MonthlyFee {
+  id: string;
+  month: number;
+  year: number;
+  monthName: string;
+  amount: number;
+  status: string;
+  dueDate: string;
+  isOverdue: boolean;
+}
+
 interface DashboardStats {
   totalLoans: number;
   activeLoans: number;
@@ -129,6 +140,7 @@ interface MemberDashboardResponse {
   recentApplications?: RecentApplication[];
   meeting?: DashboardMeeting | null;
   overdueInstallment?: OverdueInstallment | null;
+  monthlyFee?: MonthlyFee | null;
   message?: string;
 }
 
@@ -360,13 +372,12 @@ export default function MemberDashboardPage() {
 
   async function loadStats() {
     try {
-      const [dashboardRes, feeRes] = await Promise.all([
-        fetch("/api/member/dashboard", { method: "GET", cache: "no-store" }),
-        fetch("/api/member/monthly-fee/status", { method: "GET", cache: "no-store" })
-      ]);
+      const res = await fetch("/api/member/dashboard", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-      const result = (await readJsonResponse(dashboardRes)) as MemberDashboardResponse;
-      const feeResult = await readJsonResponse(feeRes);
+      const result = (await readJsonResponse(res)) as MemberDashboardResponse;
 
       if (result.success) {
         const applications = result.recentApplications || [];
@@ -392,6 +403,24 @@ export default function MemberDashboardPage() {
           setOverdueInstallment(null);
         }
 
+        if (result.monthlyFee && (result.monthlyFee.isOverdue || result.monthlyFee.status === "overdue")) {
+          const formattedDate = new Date(result.monthlyFee.dueDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric"
+          });
+
+          setUnpaidFee({
+            id: result.monthlyFee.id,
+            month: result.monthlyFee.monthName,
+            year: result.monthlyFee.year,
+            amount: result.monthlyFee.amount,
+            dueDate: formattedDate,
+          });
+        } else {
+          setUnpaidFee(null);
+        }
+
         setStats({
           ...defaultStats,
           totalLoans: result.stats?.totalLoans || 0,
@@ -406,28 +435,6 @@ export default function MemberDashboardPage() {
           recentAnnouncements: buildRecentAnnouncements(applications),
         });
       }
-
-      if (feeResult.success && feeResult.payment) {
-        const payment = feeResult.payment;
-        if (payment.isOverdue || payment.status === "overdue") {
-          const formattedDate = new Date(payment.dueDate).toLocaleDateString("en-US", {
-            month: "short",
-            day: "2-digit",
-            year: "numeric"
-          });
-
-          setUnpaidFee({
-            id: payment.id,
-            month: payment.monthName,
-            year: payment.year,
-            amount: payment.amount,
-            dueDate: formattedDate,
-          });
-        } else {
-          setUnpaidFee(null); 
-        }
-      }
-
     } catch (error) {
       console.error("LOAD_MEMBER_DASHBOARD_ERROR", error);
     } finally {
@@ -449,7 +456,7 @@ export default function MemberDashboardPage() {
 
     const interval = window.setInterval(() => {
       void loadStats();
-    }, 10000);
+    }, 30000);
 
     return () => {
       window.clearTimeout(timer);
@@ -553,7 +560,7 @@ export default function MemberDashboardPage() {
                   <div className="mt-6 flex flex-wrap gap-4">
                     <div className="rounded-2xl border border-red-500/20 bg-white px-6 py-4 shadow-sm">
                       <p className="text-xs font-bold text-red-600">Total Payable</p>
-                      <p className="mt-1 text-xl font-extrabold text-[#2b241f]">{formatCurrency(overdueInstallment.amount)}</p>
+                      <p className="mt-1 text-xl font-extrabold text-[#2b241f]">{formatCurrency(overdueInstallment.amount + (overdueInstallment.penaltyAmount || 0))}</p>
                     </div>
                     {overdueInstallment.penaltyAmount > 0 && (
                       <div className="rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef]/90 px-6 py-4 shadow-sm">
