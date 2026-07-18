@@ -10,6 +10,11 @@ import {
   buildPenaltyWarningSms,
 } from "@/lib/sms/sendSms";
 
+// ================== HELPER FUNCTION ==================
+function roundToTwo(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 export async function GET() {
   try {
     await dbConnect();
@@ -66,24 +71,30 @@ export async function GET() {
       }
     }
 
-    // STEP 2: Daily penalty after 4 days grace period
+    // STEP 2: Daily penalty after 4 days grace period (WITH PROPER ROUNDING)
     const overdueInstallments = await Installment.find({
       status: { $in: ["pending", "overdue"] },
       dueDate: { $lte: fourDaysAgo },
     }).populate("userId", "phone");
 
     for (const installment of overdueInstallments) {
-      const dailyPenaltyAmount =
-        (installment.amount * PENALTY_RATE_PERCENTAGE) / 100;
+      // ========== PROPER DAILY PENALTY CALCULATION ==========
+      const dailyPenaltyAmount = roundToTwo(
+        (installment.amount * PENALTY_RATE_PERCENTAGE) / 100
+      );
 
-      installment.penaltyAmount =
-        (installment.penaltyAmount || 0) + dailyPenaltyAmount;
+      // Total penalty එකත් හරියටම update කරනවා
+      installment.penaltyAmount = roundToTwo(
+        (installment.penaltyAmount || 0) + dailyPenaltyAmount
+      );
+
       installment.status = "overdue";
       installment.lastPenaltyAppliedAt = new Date();
       installment.penaltyRate = PENALTY_RATE_PERCENTAGE;
 
       await installment.save();
 
+      // Loan එකටත් penalty එක add කරනවා
       await Loan.findByIdAndUpdate(installment.loanId, {
         $inc: {
           penaltyAmount: dailyPenaltyAmount,
@@ -95,6 +106,7 @@ export async function GET() {
         },
       });
 
+      // Send warning SMS
       const memberPhone =
         installment.userId && typeof installment.userId === "object"
           ? (installment.userId as { phone?: string }).phone
@@ -116,7 +128,7 @@ export async function GET() {
       {
         success: true,
         cron: true,
-        message: "4-day grace period + Daily penalty system executed successfully.",
+        message: "4-day grace period + Daily penalty system executed successfully (with proper rounding).",
         data: {
           appliedPenaltyRate: `${PENALTY_RATE_PERCENTAGE}%`,
           remindersSent,
