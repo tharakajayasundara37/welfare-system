@@ -40,6 +40,42 @@ type LeanInstallment = {
   reminderSentAt?: Date | null;
 };
 
+type GroupedInstallment = {
+  _id: string;
+  installmentNumber: number;
+  amount: number;
+  paidAmount: number;
+  paymentReference: string;
+  dueDate: Date;
+  daysLeft: number;
+  status: string;
+  dueStatus: string;
+  paidAt: Date | null;
+  reminderSent: boolean;
+  reminderSentAt: Date | null;
+};
+
+type GroupedLoan = {
+  loanId: string;
+  loanType: string;
+  loanStatus: string;
+  approvedAmount: number;
+  totalRepayment: number;
+  remainingBalance: number;
+  totalInstallments: number;
+  totalPaidInstallments: number;
+  installments: GroupedInstallment[];
+};
+
+type GroupedUser = {
+  userId: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone: string;
+  employeeId: string;
+  loans: GroupedLoan[];
+};
+
 function getDaysLeft(dueDate: Date) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -61,9 +97,25 @@ function getDueStatus(status: string, dueDate: Date) {
   return "upcoming";
 }
 
+function getSafeId(
+  field: PopulatedUser | PopulatedLoan | Types.ObjectId | string | null | undefined,
+  defaultId: string
+): string {
+  if (!field) return defaultId;
+  if (typeof field === "object" && "_id" in field && field._id) {
+    return field._id.toString();
+  }
+  if (typeof field === "string") return field;
+  if (field.toString) return field.toString();
+  return defaultId;
+}
+
 export async function GET() {
   try {
     await dbConnect();
+
+    await import("@/models/Loan");
+    await import("@/models/User");
 
     const currentUser = await getCurrentUser();
 
@@ -92,51 +144,65 @@ export async function GET() {
       .sort({ dueDate: 1, createdAt: -1 })
       .lean<LeanInstallment[]>();
 
-    const formattedInstallments = installments.map((item) => {
+    const groupedData = installments.reduce<GroupedUser[]>((acc, item) => {
+      const userId = getSafeId(item.userId, "unknown_user");
+      const loanId = getSafeId(item.loanId, "unknown_loan");
+
+      let userGroup = acc.find((u) => u.userId === userId);
+
+      if (!userGroup) {
+        userGroup = {
+          userId,
+          memberName: item.userId?.fullName || "Unknown Member",
+          memberEmail: item.userId?.email || "",
+          memberPhone: item.userId?.phone || "",
+          employeeId: item.userId?.employeeId || "",
+          loans: [],
+        };
+        acc.push(userGroup);
+      }
+
+      let loanGroup = userGroup.loans.find((l) => l.loanId === loanId);
+
+      if (!loanGroup) {
+        loanGroup = {
+          loanId,
+          loanType: item.loanId?.loanType || "Loan",
+          loanStatus: item.loanId?.status || "",
+          approvedAmount: item.loanId?.approvedAmount || 0,
+          totalRepayment: item.loanId?.totalRepayment || 0,
+          remainingBalance: item.loanId?.remainingBalance || 0,
+          totalInstallments: item.loanId?.totalInstallments || 0,
+          totalPaidInstallments: item.loanId?.totalPaidInstallments || 0,
+          installments: [],
+        };
+        userGroup.loans.push(loanGroup);
+      }
+
       const daysLeft = getDaysLeft(new Date(item.dueDate));
       const dueStatus = getDueStatus(item.status, new Date(item.dueDate));
 
-      return {
+      loanGroup.installments.push({
         _id: item._id.toString(),
-
-        loanId: item.loanId?._id?.toString() || "",
-        userId: item.userId?._id?.toString() || "",
-
-        memberName: item.userId?.fullName || "Unknown Member",
-        memberEmail: item.userId?.email || "",
-        memberPhone: item.userId?.phone || "",
-        employeeId: item.userId?.employeeId || "",
-
-        loanType: item.loanId?.loanType || "Loan",
-        loanStatus: item.loanId?.status || "",
-
         installmentNumber: item.installmentNumber || 0,
-        totalInstallments: item.loanId?.totalInstallments || 0,
-
         amount: item.amount || 0,
         paidAmount: item.paidAmount || 0,
         paymentReference: item.paymentReference || "",
-
-        approvedAmount: item.loanId?.approvedAmount || 0,
-        totalRepayment: item.loanId?.totalRepayment || 0,
-        remainingBalance: item.loanId?.remainingBalance || 0,
-        totalPaidInstallments: item.loanId?.totalPaidInstallments || 0,
-
         dueDate: item.dueDate,
         daysLeft,
         status: item.status,
         dueStatus,
-
         paidAt: item.paidAt || null,
-
         reminderSent: item.reminderSent || false,
         reminderSentAt: item.reminderSentAt || null,
-      };
-    });
+      });
+
+      return acc;
+    }, []);
 
     return NextResponse.json({
       success: true,
-      installments: formattedInstallments,
+      data: groupedData,
     });
   } catch (error) {
     console.error("GET_FINANCE_INSTALLMENTS_ERROR", error);

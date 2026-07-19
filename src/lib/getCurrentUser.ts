@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 import dbConnect from "@/lib/dbConnect";
 
@@ -32,10 +33,12 @@ function normalizeThemeMode(themeMode?: string): ThemeMode {
 
 export async function getCurrentUser() {
   try {
-    // 1. Establish the database connection first
     await dbConnect();
-    
-    // 2. Dynamically import the User model after connection (fixes Mongoose buffering/cold start issues)
+
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connection.asPromise();
+    }
+
     const User = (await import("@/models/User")).default;
 
     const cookieStore = await cookies();
@@ -79,11 +82,9 @@ export async function getCurrentUser() {
       jobRole: user.jobRole,
       employeeId: user.employeeId,
       salaryRange: user.salaryRange,
-
       profileImage: user.profileImage || "",
       themeMode: normalizeThemeMode(user.themeMode),
       themeColor: user.themeColor || "#9b6f45",
-
       isVerified: user.isVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

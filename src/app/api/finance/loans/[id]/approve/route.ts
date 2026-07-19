@@ -4,8 +4,9 @@ import dbConnect from "@/lib/dbConnect";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
 import Loan from "@/models/Loan";
-import Notification from "@/models/Notification"; // Notification model eka import kala
-import { sendSms, buildLoanIssuedSms } from "@/lib/sms/sendSms"; // SMS function eka import kala
+import Installment from "@/models/Installment";
+import Notification from "@/models/Notification"; 
+import { sendSms, buildLoanIssuedSms } from "@/lib/sms/sendSms"; 
 
 type Params = {
   id: string;
@@ -142,6 +143,35 @@ export async function PATCH(
 
     await loan.save();
 
+    const totalMonths = loan.totalInstallments || loan.approvedPeriodMonths || 0;
+    const emiAmount = loan.monthlyInstallment || 0;
+
+    if (totalMonths > 0) {
+      const existingInstallmentsCount = await Installment.countDocuments({ loanId: loan._id });
+
+      if (existingInstallmentsCount === 0) {
+        const installmentsToCreate = [];
+
+        for (let i = 1; i <= totalMonths; i++) {
+          const dueDate = new Date(disbursementDate);
+          dueDate.setMonth(dueDate.getMonth() + i);
+
+          installmentsToCreate.push({
+            loanId: loan._id,
+            userId: loan.userId,
+            installmentNumber: i,
+            amount: emiAmount,
+            dueDate: dueDate,
+            status: "pending",
+          });
+        }
+
+        if (installmentsToCreate.length > 0) {
+          await Installment.insertMany(installmentsToCreate); 
+        }
+      }
+    }
+
     const updatedLoan = await Loan.findById(loan._id)
       .populate(
         "userId",
@@ -150,17 +180,12 @@ export async function PATCH(
       .populate("financeOfficerId", "fullName email role employeeId")
       .lean();
 
-    // =========================================================================
-    // ALUTHIN ADD KARAPU KALLA: NOTIFICATION SAHA SMS YAWANA LOGIC EKA
-    // =========================================================================
     if (updatedLoan && updatedLoan.userId) {
-      // TypeScript error nathi wenna type eka define karanawa
       const memberData = updatedLoan.userId as { _id?: unknown; phone?: string };
       const memberId = memberData._id?.toString();
       const memberPhone = memberData.phone;
       const loanTypeStr = updatedLoan.loanType || "Welfare Loan";
 
-      // 1. IN-APP NOTIFICATION EKA YAWANAWA
       if (memberId) {
         try {
           await Notification.create({
@@ -175,7 +200,6 @@ export async function PATCH(
         }
       }
 
-      // 2. REAL-TIME SMS EKA YAWANAWA
       if (memberPhone) {
         try {
           const smsMessage = buildLoanIssuedSms({
@@ -198,12 +222,11 @@ export async function PATCH(
         }
       }
     }
-    // =========================================================================
 
     return NextResponse.json(
       {
         success: true,
-        message: "Loan approved and disbursed successfully.",
+        message: "Loan approved and disbursed successfully. Installments created.",
         loan: updatedLoan,
       },
       { status: 200 }

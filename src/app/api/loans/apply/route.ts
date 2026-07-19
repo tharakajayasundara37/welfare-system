@@ -71,20 +71,31 @@ function safeFileName(fileName: string) {
 }
 
 async function saveUploadedFile(file: File, loanId: string, documentType: string) {
-  const timestamp = Date.now();
-  const cleanedOriginalName = safeFileName(file.name);
-  const blobPath = `loan-documents/${loanId}/${documentType}-${timestamp}-${cleanedOriginalName}`;
+  try {
+    const timestamp = Date.now();
+    const cleanedOriginalName = safeFileName(file.name);
+    const blobPath = `loan-documents/${loanId}/${documentType}-${timestamp}-${cleanedOriginalName}`;
 
-  const blob = await put(blobPath, file, { access: "private" });
+    // Vercel Blob එක Private බැවින් access එක "private" ලෙස යොදා, 
+    // OIDC Error එක මඟහැරීම සඳහා Token එක අනිවාර්ය කර ඇත.
+    const blob = await put(blobPath, file, { 
+      access: "private",
+      token: process.env.BLOB_READ_WRITE_TOKEN
+    });
 
-  return {
-    fileName: blob.pathname,
-    originalName: file.name,
-    fileUrl: blob.url,
-    storagePath: blob.url,
-    mimeType: file.type || "application/octet-stream",
-    size: file.size,
-  };
+    return {
+      fileName: blob.pathname,
+      originalName: file.name,
+      fileUrl: blob.url,
+      storagePath: blob.url,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+    };
+  } catch (error) {
+    // Vercel Blob Upload වීමේදී එන නියම Error එක Console එකේ පෙන්වයි
+    console.error(`Error uploading ${documentType} to Vercel Blob:`, error);
+    throw new Error(`Failed to upload ${documentType}`);
+  }
 }
 
 export async function POST(request: NextRequest) {

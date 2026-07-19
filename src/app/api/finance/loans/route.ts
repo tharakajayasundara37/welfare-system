@@ -5,6 +5,57 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 
 import Loan from "@/models/Loan";
 
+type PopulatedUser = {
+  _id: { toString: () => string };
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  nic?: string;
+  employeeId?: string;
+  department?: string;
+  jobRole?: string;
+  companyName?: string;
+  salaryRange?: string;
+  accountStatus?: string;
+};
+
+type PopulatedOfficer = {
+  _id: { toString: () => string };
+  fullName?: string;
+  email?: string;
+  role?: string;
+  employeeId?: string;
+};
+
+type LeanLoan = {
+  _id: { toString: () => string };
+  userId?: PopulatedUser | null;
+  welfareOfficerId?: PopulatedOfficer | null;
+  adminId?: PopulatedOfficer | null;
+  financeOfficerId?: PopulatedOfficer | null;
+  loanType?: string;
+  purpose?: string;
+  requestedAmount?: number;
+  approvedAmount?: number;
+  monthlyInstallment?: number;
+  approvedPeriodMonths?: number;
+  preferredPeriodMonths?: number;
+  totalRepayment?: number;
+  remainingBalance?: number;
+  systemInterestRate?: number;
+  status?: string;
+  officerRemark?: string;
+  adminRemark?: string;
+  financeRemark?: string;
+  adminApprovedAt?: Date | null;
+  financeApprovedAt?: Date | null;
+  financeRejectedAt?: Date | null;
+  disbursementDate?: Date | null;
+  nextEMIDueDate?: Date | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+};
+
 type LoanStatusColor = "pending" | "approved" | "rejected" | "completed";
 
 function getStatusLabel(status?: string) {
@@ -162,27 +213,14 @@ export async function GET(request: NextRequest) {
       .populate("adminId", "fullName email role employeeId")
       .populate("financeOfficerId", "fullName email role employeeId")
       .sort({ updatedAt: -1 })
-      .lean();
+      .lean<LeanLoan[]>();
 
     const mappedLoans = loans
       .map((loan) => {
-        const member =
-          typeof loan.userId === "object" && loan.userId ? loan.userId : null;
-
-        const officer =
-          typeof loan.welfareOfficerId === "object" && loan.welfareOfficerId
-            ? loan.welfareOfficerId
-            : null;
-
-        const admin =
-          typeof loan.adminId === "object" && loan.adminId
-            ? loan.adminId
-            : null;
-
-        const financeOfficer =
-          typeof loan.financeOfficerId === "object" && loan.financeOfficerId
-            ? loan.financeOfficerId
-            : null;
+        const member = loan.userId;
+        const officer = loan.welfareOfficerId;
+        const admin = loan.adminId;
+        const financeOfficer = loan.financeOfficerId;
 
         return {
           id: loan._id.toString(),

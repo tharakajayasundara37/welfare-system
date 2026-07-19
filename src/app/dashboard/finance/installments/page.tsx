@@ -9,42 +9,52 @@ import {
   Loader2,
   RefreshCcw,
   Search,
+  User,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-type Installment = {
-  _id?: string;
-  loanId?: string;
-  userId?: string;
-  memberName?: string;
-  memberEmail?: string;
-  memberPhone?: string;
-  employeeId?: string;
-  loanType?: string;
-  loanStatus?: string;
-  installmentNumber?: number;
-  totalInstallments?: number;
-  amount?: number;
-  paidAmount?: number;
-  paymentReference?: string;
-  approvedAmount?: number;
-  totalRepayment?: number;
-  remainingBalance?: number;
-  totalPaidInstallments?: number;
-  dueDate?: string;
-  daysLeft?: number;
-  status?: "pending" | "paid" | "overdue";
-  dueStatus?: "upcoming" | "due_soon" | "overdue" | "paid";
-  paidAt?: string | null;
-  reminderSent?: boolean;
-  reminderSentAt?: string | null;
+type GroupedInstallment = {
+  _id: string;
+  installmentNumber: number;
+  amount: number;
+  paidAmount: number;
+  paymentReference: string;
+  dueDate: string;
+  daysLeft: number;
+  status: "pending" | "paid" | "overdue";
+  dueStatus: "upcoming" | "due_soon" | "overdue" | "paid";
+  paidAt: string | null;
+  reminderSent: boolean;
+  reminderSentAt: string | null;
+};
+
+type GroupedLoan = {
+  loanId: string;
+  loanType: string;
+  loanStatus: string;
+  approvedAmount: number;
+  totalRepayment: number;
+  remainingBalance: number;
+  totalInstallments: number;
+  totalPaidInstallments: number;
+  installments: GroupedInstallment[];
+};
+
+type GroupedUser = {
+  userId: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone: string;
+  employeeId: string;
+  loans: GroupedLoan[];
 };
 
 type ApiResponse = {
   success: boolean;
-  installments?: Installment[];
+  data?: GroupedUser[];
   message?: string;
 };
 
@@ -70,21 +80,11 @@ function formatDate(value?: string | null) {
   });
 }
 
-function getInstallmentKey(item: Installment, index: number) {
-  return (
-    item._id ||
-    `${item.loanId || "loan"}-${item.userId || "user"}-${
-      item.installmentNumber || index
-    }-${item.dueDate || index}`
-  );
-}
-
 async function readJsonResponse(response: Response) {
   const contentType = response.headers.get("content-type");
 
   if (!contentType?.includes("application/json")) {
     await response.text();
-
     throw new Error(
       "API returned HTML instead of JSON. Check /api/finance/installments route."
     );
@@ -94,7 +94,7 @@ async function readJsonResponse(response: Response) {
 }
 
 export default function FinanceInstallmentsPage() {
-  const [items, setItems] = useState<Installment[]>([]);
+  const [items, setItems] = useState<GroupedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -109,7 +109,7 @@ export default function FinanceInstallmentsPage() {
 
       const response = await fetch("/api/finance/installments", {
         method: "GET",
-        cache: "no-store",
+        cache: "no-store", 
       });
 
       const data = (await readJsonResponse(response)) as ApiResponse;
@@ -120,7 +120,7 @@ export default function FinanceInstallmentsPage() {
         return;
       }
 
-      setItems(data.installments || []);
+      setItems(data.data || []);
     } catch (err) {
       console.error("LOAD_FINANCE_INSTALLMENTS_ERROR", err);
       setItems([]);
@@ -145,7 +145,7 @@ export default function FinanceInstallmentsPage() {
 
     const interval = window.setInterval(() => {
       void loadInstallments(false);
-    }, 15000);
+    }, 5000); 
 
     return () => {
       window.clearTimeout(timeout);
@@ -158,31 +158,66 @@ export default function FinanceInstallmentsPage() {
 
     if (!query) return items;
 
-    return items.filter((item) => {
-      return (
-        safeText(item.memberName).toLowerCase().includes(query) ||
-        safeText(item.memberPhone).toLowerCase().includes(query) ||
-        safeText(item.loanType).toLowerCase().includes(query) ||
-        safeText(item.employeeId).toLowerCase().includes(query) ||
-        safeText(item.status).toLowerCase().includes(query) ||
-        safeText(item.dueStatus).toLowerCase().includes(query) ||
-        safeText(item.paymentReference).toLowerCase().includes(query)
-      );
-    });
+    return items
+      .map((user) => {
+        const userMatches =
+          safeText(user.memberName).toLowerCase().includes(query) ||
+          safeText(user.memberPhone).toLowerCase().includes(query) ||
+          safeText(user.employeeId).toLowerCase().includes(query);
+
+        const filteredLoans = user.loans
+          .map((loan) => {
+            const loanMatches = safeText(loan.loanType)
+              .toLowerCase()
+              .includes(query);
+
+            const filteredInstallments = loan.installments.filter((inst) => {
+              return (
+                safeText(inst.status).toLowerCase().includes(query) ||
+                safeText(inst.dueStatus).toLowerCase().includes(query) ||
+                safeText(inst.paymentReference).toLowerCase().includes(query)
+              );
+            });
+
+            if (userMatches || loanMatches || filteredInstallments.length > 0) {
+              return {
+                ...loan,
+                installments:
+                  (userMatches || loanMatches) &&
+                  filteredInstallments.length === 0
+                    ? loan.installments
+                    : filteredInstallments,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean) as GroupedLoan[];
+
+        if (userMatches || filteredLoans.length > 0) {
+          return {
+            ...user,
+            loans: filteredLoans.length > 0 ? filteredLoans : user.loans,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as GroupedUser[];
   }, [items, search]);
 
-  const pendingCount = items.filter((item) => item.status === "pending").length;
-  const paidCount = items.filter((item) => item.status === "paid").length;
-  const dueSoonCount = items.filter(
-    (item) => item.dueStatus === "due_soon"
-  ).length;
-  const overdueCount = items.filter(
-    (item) => item.dueStatus === "overdue"
-  ).length;
+  const allInstallments = useMemo(() => {
+    return items.flatMap((user) =>
+      user.loans.flatMap((loan) => loan.installments)
+    );
+  }, [items]);
 
-  const totalPendingAmount = items
-    .filter((item) => item.status !== "paid")
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const pendingCount = allInstallments.filter((i) => i.status === "pending").length;
+  const paidCount = allInstallments.filter((i) => i.status === "paid").length;
+  const dueSoonCount = allInstallments.filter((i) => i.dueStatus === "due_soon").length;
+  const overdueCount = allInstallments.filter((i) => i.dueStatus === "overdue").length;
+
+  const totalPendingAmount = allInstallments
+    .filter((i) => i.status !== "paid")
+    .reduce((sum, i) => sum + Number(i.amount || 0), 0);
 
   return (
     <div className="min-h-screen rounded-[34px] bg-[#eee6da] p-6 text-[#2b241f]">
@@ -194,7 +229,7 @@ export default function FinanceInstallmentsPage() {
           </div>
 
           <p className="mt-2 text-sm text-[#6b5e54]">
-            Track all member installments from the real installment database.
+            Track all member installments from the real-time database.
           </p>
         </div>
 
@@ -205,7 +240,7 @@ export default function FinanceInstallmentsPage() {
           className="rounded-2xl border-[#d9c8b8] bg-[#fbf7ef] text-[#2b241f] hover:bg-[#fffaf3]"
         >
           <RefreshCcw size={16} className="mr-2" />
-          Refresh
+          Refresh Data
         </Button>
       </div>
 
@@ -250,100 +285,144 @@ export default function FinanceInstallmentsPage() {
           <Loader2 className="animate-spin text-[#9b6f45]" />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {filteredItems.length === 0 ? (
             <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
               <CardContent className="p-10 text-center text-[#6b5e54]">
-                No installments found.
+                No active records found.
               </CardContent>
             </Card>
           ) : (
-            filteredItems.map((item, index) => {
-              const status = item.status || "pending";
-              const dueStatus = item.dueStatus || "upcoming";
-              const daysLeft = Number(item.daysLeft || 0);
-
-              return (
-                <Card
-                  key={getInstallmentKey(item, index)}
-                  className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]"
-                >
-                  <CardContent className="flex flex-col justify-between gap-4 p-5 xl:flex-row xl:items-center">
-                    <div>
-                      <h3 className="text-lg font-extrabold">
-                        {item.memberName || "Unknown Member"}
-                      </h3>
-
-                      <p className="text-sm text-[#6b5e54]">
-                        {item.loanType || "Loan"} • Installment{" "}
-                        {item.installmentNumber || "-"}/
-                        {item.totalInstallments || "-"}
-                      </p>
-
-                      <p className="mt-1 text-xs text-[#8b7a6d]">
-                        Phone: {item.memberPhone || "-"} • Employee ID:{" "}
-                        {item.employeeId || "-"}
-                      </p>
-
-                      <p className="mt-1 text-xs text-[#8b7a6d]">
-                        Amount: {formatCurrency(item.amount)} • Remaining:{" "}
-                        {formatCurrency(item.remainingBalance)}
-                      </p>
-
-                      <p className="mt-1 text-xs text-[#8b7a6d]">
-                        Due Date: {formatDate(item.dueDate)} •{" "}
-                        {status === "paid"
-                          ? `Paid: ${formatDate(item.paidAt)}`
-                          : daysLeft >= 0
-                            ? `${daysLeft} days left`
-                            : `${Math.abs(daysLeft)} days overdue`}
-                      </p>
-
-                      {item.paymentReference ? (
-                        <p className="mt-1 text-xs text-[#8b7a6d]">
-                          Payment Ref: {item.paymentReference}
-                        </p>
-                      ) : null}
+            filteredItems.map((user) => (
+              <Card
+                key={user.userId}
+                className="overflow-hidden rounded-3xl border-[#d9c8b8] bg-[#fbf7ef] shadow-sm"
+              >
+                <div className="flex flex-col gap-4 border-b border-[#d9c8b8] bg-[#f2eadc] p-5 md:flex-row md:items-center md:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e8dac6] text-[#9b6f45]">
+                      <User size={24} />
                     </div>
+                    <div>
+                      <h2 className="text-xl font-extrabold text-[#2b241f]">
+                        {user.memberName}
+                      </h2>
+                      <p className="text-sm font-medium text-[#6b5e54]">
+                        Emp ID: {user.employeeId || "-"} • Phone:{" "}
+                        {user.memberPhone || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
-                          dueStatus === "overdue"
-                            ? "bg-red-100 text-red-700"
-                            : dueStatus === "due_soon"
-                              ? "bg-orange-100 text-orange-700"
-                              : dueStatus === "paid"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {dueStatus.replaceAll("_", " ")}
-                      </span>
-
-                      {item.reminderSent ? (
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                          <Bell size={13} className="mr-1" />
-                          SMS Sent
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
-                          <Clock3 size={13} className="mr-1" />
-                          No SMS
-                        </span>
-                      )}
-
-                      {status === "paid" ? (
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">
-                          <CheckCircle2 size={13} className="mr-1" />
+                <CardContent className="p-0">
+                  {user.loans.map((loan) => (
+                    <div
+                      key={loan.loanId}
+                      className="border-b border-[#d9c8b8]/50 p-5 last:border-none"
+                    >
+                      <div className="mb-4 flex flex-col gap-2 rounded-2xl bg-white/50 p-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center gap-2">
+                          <Wallet size={18} className="text-[#9b6f45]" />
+                          <div>
+                            <h3 className="text-base font-bold text-[#4a3f35]">
+                              {loan.loanType}
+                            </h3>
+                            <p className="text-xs font-medium text-[#8b7a6d]">
+                              Approved: {formatCurrency(loan.approvedAmount)} •
+                              Remaining Balance:{" "}
+                              {formatCurrency(loan.remainingBalance)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="inline-block rounded-full border border-[#d9c8b8] bg-white px-3 py-1 text-xs font-bold text-[#6b5e54]">
+                          {loan.totalPaidInstallments} / {loan.totalInstallments}{" "}
                           Paid
                         </span>
-                      ) : null}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                        {loan.installments.map((item) => {
+                          const status = item.status || "pending";
+                          const dueStatus = item.dueStatus || "upcoming";
+                          const daysLeft = Number(item.daysLeft || 0);
+
+                          return (
+                            <div
+                              key={item._id}
+                              className="flex flex-col justify-between gap-3 rounded-2xl border border-[#e8dac6] bg-white p-4 shadow-sm transition hover:shadow-md"
+                            >
+                              <div>
+                                <div className="mb-2 flex items-center justify-between">
+                                  <span className="text-sm font-bold text-[#4a3f35]">
+                                    Installment {item.installmentNumber}
+                                  </span>
+                                  <span
+                                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                      dueStatus === "overdue"
+                                        ? "bg-red-100 text-red-700"
+                                        : dueStatus === "due_soon"
+                                          ? "bg-orange-100 text-orange-700"
+                                          : dueStatus === "paid"
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-blue-100 text-blue-700"
+                                    }`}
+                                  >
+                                    {dueStatus.replaceAll("_", " ")}
+                                  </span>
+                                </div>
+
+                                <p className="text-lg font-extrabold text-[#2b241f]">
+                                  {formatCurrency(item.amount)}
+                                </p>
+
+                                <p className="mt-1 flex items-center gap-1 text-xs text-[#8b7a6d]">
+                                  <Clock3 size={12} />
+                                  Due: {formatDate(item.dueDate)}
+                                  {status !== "paid" && (
+                                    <span className="ml-1 opacity-70">
+                                      ({daysLeft >= 0
+                                        ? `${daysLeft} days left`
+                                        : `${Math.abs(daysLeft)} days overdue`})
+                                    </span>
+                                  )}
+                                </p>
+
+                                {item.paymentReference && (
+                                  <p className="mt-1 text-xs font-medium text-[#8b7a6d]">
+                                    Ref: {item.paymentReference}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 pt-2">
+                                {item.reminderSent ? (
+                                  <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700">
+                                    <Bell size={10} className="mr-1" /> SMS Sent
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-[10px] font-bold text-gray-500">
+                                    <Bell size={10} className="mr-1 opacity-50" />{" "}
+                                    No SMS
+                                  </span>
+                                )}
+
+                                {status === "paid" && (
+                                  <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700">
+                                    <CheckCircle2 size={10} className="mr-1" />{" "}
+                                    Paid {formatDate(item.paidAt)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+                  ))}
+                </CardContent>
+              </Card>
+            ))
           )}
         </div>
       )}
@@ -363,7 +442,7 @@ function StatBox({
   return (
     <Card className="rounded-3xl border-[#d9c8b8] bg-[#fbf7ef]">
       <CardContent className="p-5">
-        <p className="text-sm text-[#6b5e54]">{title}</p>
+        <p className="text-sm font-medium text-[#6b5e54]">{title}</p>
         <h2 className={`mt-2 text-3xl font-extrabold ${valueClass}`}>
           {value}
         </h2>
