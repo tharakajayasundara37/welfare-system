@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import Loan from "@/models/Loan";
 import MeetingNotice from "@/models/MeetingNotice";
 import Installment from "@/models/Installment";
+import MonthlyPayment from "@/models/MonthlyPayment"; // <-- මේක තමයි හරිම Model එක
 
 type RawLoan = {
   _id: {
@@ -47,6 +48,15 @@ type RawInstallment = {
   dueDate?: Date | string;
 };
 
+type RawMonthlyPayment = {
+  _id: { toString: () => string };
+  month?: number;
+  year?: number;
+  amount?: number;
+  status?: string;
+  dueDate?: Date | string;
+};
+
 function formatStatus(status: string) {
   return status
     .replaceAll("_", " ")
@@ -76,6 +86,11 @@ function getStatusColor(status: string) {
   return "pending";
 }
 
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
 export async function GET() {
   try {
     await dbConnect();
@@ -102,6 +117,7 @@ export async function GET() {
       recentLoans,
       upcomingMeeting,
       overdueInst,
+      overdueFee,
     ] = await Promise.all([
       Loan.countDocuments({ userId }),
 
@@ -156,7 +172,6 @@ export async function GET() {
         .sort({ meetingAt: 1 })
         .lean<RawMeeting | null>(),
 
-      // Fetch the oldest overdue installment
       Installment.findOne({
         userId,
         status: "overdue",
@@ -165,6 +180,15 @@ export async function GET() {
         .populate("loanId", "loanType")
         .sort({ dueDate: 1 })
         .lean<RawInstallment | null>(),
+
+      // Fetch the oldest overdue monthly payment using MonthlyPayment Model
+      MonthlyPayment.findOne({
+        userId,
+        status: "overdue",
+        isDeleted: { $ne: true },
+      })
+        .sort({ dueDate: 1 })
+        .lean<RawMonthlyPayment | null>(),
     ]);
 
     const activeLoans = await Loan.countDocuments({
@@ -237,6 +261,19 @@ export async function GET() {
               amount: overdueInst.amount || 0,
               penaltyAmount: overdueInst.penaltyAmount || 0,
               dueDate: overdueInst.dueDate || null,
+            }
+          : null,
+
+        monthlyFee: overdueFee
+          ? {
+              id: overdueFee._id.toString(),
+              month: overdueFee.month || 0,
+              year: overdueFee.year || new Date().getFullYear(),
+              monthName: overdueFee.month ? monthNames[overdueFee.month - 1] : "Current Month",
+              amount: overdueFee.amount || 0,
+              status: overdueFee.status || "overdue",
+              dueDate: overdueFee.dueDate || null,
+              isOverdue: overdueFee.status === "overdue",
             }
           : null,
       },

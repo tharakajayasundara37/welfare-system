@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -64,6 +64,63 @@ const rejectedStatuses = [
   "finance_rejected",
   "user_rejected",
 ];
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  glow,
+  badge,
+  iconColor,
+  iconBg,
+}: {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: ElementType;
+  glow: string;
+  badge: string;
+  iconColor: string;
+  iconBg: string;
+}) {
+  return (
+    <Card className="group h-full overflow-hidden rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.14)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:border-[#9b6f45]/45 hover:bg-[#fffaf3]">
+      <CardContent className="relative flex h-full flex-col p-5">
+        <div
+          className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full blur-3xl ${glow}`}
+        />
+
+        <div className="relative flex items-start justify-between gap-3">
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#d9c8b8] ${iconBg} ${iconColor} shadow-lg backdrop-blur-xl`}
+          >
+            <Icon size={22} />
+          </div>
+
+          <span className="rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-3 py-1 text-[11px] font-bold text-[#9b6f45]">
+            {badge}
+          </span>
+        </div>
+
+        {/* Text Details Centered & Highlighted */}
+        <div className="relative mt-6 flex flex-col items-center text-center">
+          <p className="text-sm font-semibold text-[#6b5e54]">
+            {title}
+          </p>
+
+          <h2 className="mt-3 break-words text-5xl font-black tracking-tight text-[#2b241f] drop-shadow-sm">
+            {value}
+          </h2>
+
+          <p className="mt-3 text-sm leading-6 text-[#79695d]">
+            {subtitle}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function MemberLoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -192,81 +249,49 @@ export default function MemberLoansPage() {
         </section>
 
         <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <Card className="rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 shadow-[0_18px_50px_rgba(44,36,31,0.08)]">
-            <CardContent className="p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-[#9b6f45]">
-                  <FileText size={26} />
-                </span>
-                <span className="rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-4 py-1 text-xs font-bold text-[#9b6f45]">
-                  Loans
-                </span>
-              </div>
+          <StatCard
+            title="Total Loans"
+            value={totalLoans}
+            subtitle="All submitted applications"
+            icon={FileText}
+            glow="bg-[#d8ad80]/30"
+            badge="Loans"
+            iconColor="text-[#8a5f3c]"
+            iconBg="bg-orange-100"
+          />
 
-              <p className="font-bold text-[#6b5e54]">Total Loans</p>
-              <h2 className="mt-3 text-5xl font-extrabold">{totalLoans}</h2>
-              <p className="mt-3 text-sm text-[#7b6b5f]">
-                All submitted loan applications
-              </p>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Active Loans"
+            value={activeLoans}
+            subtitle="Accepted or disbursed loans"
+            icon={CheckCircle2}
+            glow="bg-emerald-500/18"
+            badge="Active"
+            iconColor="text-emerald-700"
+            iconBg="bg-emerald-100"
+          />
 
-          <Card className="rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 shadow-[0_18px_50px_rgba(44,36,31,0.08)]">
-            <CardContent className="p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-100 text-green-700">
-                  <CheckCircle2 size={26} />
-                </span>
-                <span className="rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-4 py-1 text-xs font-bold text-[#9b6f45]">
-                  Active
-                </span>
-              </div>
+          <StatCard
+            title="Pending Requests"
+            value={pendingLoans}
+            subtitle="Waiting for process"
+            icon={Clock3}
+            glow="bg-orange-500/18"
+            badge="Pending"
+            iconColor="text-amber-700"
+            iconBg="bg-amber-100"
+          />
 
-              <p className="font-bold text-[#6b5e54]">Active Loans</p>
-              <h2 className="mt-3 text-5xl font-extrabold">{activeLoans}</h2>
-              <p className="mt-3 text-sm text-[#7b6b5f]">
-                Accepted, approved or disbursed loans
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 shadow-[0_18px_50px_rgba(44,36,31,0.08)]">
-            <CardContent className="p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-                  <Clock3 size={26} />
-                </span>
-                <span className="rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-4 py-1 text-xs font-bold text-[#9b6f45]">
-                  Pending
-                </span>
-              </div>
-
-              <p className="font-bold text-[#6b5e54]">Pending Requests</p>
-              <h2 className="mt-3 text-5xl font-extrabold">{pendingLoans}</h2>
-              <p className="mt-3 text-sm text-[#7b6b5f]">
-                Waiting for officer/admin/member process
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 shadow-[0_18px_50px_rgba(44,36,31,0.08)]">
-            <CardContent className="p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-700">
-                  <XCircle size={26} />
-                </span>
-                <span className="rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-4 py-1 text-xs font-bold text-[#9b6f45]">
-                  Rejected
-                </span>
-              </div>
-
-              <p className="font-bold text-[#6b5e54]">Rejected Requests</p>
-              <h2 className="mt-3 text-5xl font-extrabold">{rejectedLoans}</h2>
-              <p className="mt-3 text-sm text-[#7b6b5f]">
-                Applications rejected after review
-              </p>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Rejected Requests"
+            value={rejectedLoans}
+            subtitle="Applications rejected"
+            icon={XCircle}
+            glow="bg-red-500/16"
+            badge="Rejected"
+            iconColor="text-red-700"
+            iconBg="bg-red-100"
+          />
         </section>
 
         <section className="relative rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 p-4 shadow-[0_18px_50px_rgba(44,36,31,0.08)]">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, type ElementType } from "react";
 import Link from "next/link";
 
 import {
@@ -23,6 +23,21 @@ import {
   CreditCard,
   RefreshCw,
 } from "lucide-react";
+
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -159,6 +174,17 @@ const defaultStats: DashboardStats = {
   recentAnnouncements: [],
 };
 
+const chartColors = {
+  brown: "#9b6f45",
+  dark: "#2c241f",
+  gold: "#d8ad80",
+  green: "#10b981",
+  amber: "#f59e0b",
+  red: "#ef4444",
+  blue: "#2563eb",
+  teal: "#14b8a6",
+};
+
 async function readJsonResponse(response: Response) {
   const contentType = response.headers.get("content-type");
 
@@ -174,6 +200,20 @@ async function readJsonResponse(response: Response) {
 
 function formatCurrency(amount: number) {
   return `LKR ${Number(amount || 0).toLocaleString("en-LK")}`;
+}
+
+function formatCompactCurrency(amount: number) {
+  const value = Number(amount || 0);
+
+  if (value >= 1_000_000) {
+    return `LKR ${(value / 1_000_000).toFixed(1)}M`;
+  }
+
+  if (value >= 1_000) {
+    return `LKR ${(value / 1_000).toFixed(0)}K`;
+  }
+
+  return `LKR ${value.toLocaleString("en-LK")}`;
 }
 
 function getPercentage(value: number, total: number) {
@@ -260,6 +300,36 @@ function buildRecentAnnouncements(applications: RecentApplication[]) {
   }));
 }
 
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value?: number; name?: string; dataKey?: string }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="rounded-2xl border border-[#d9c8b8] bg-[#fffaf3] p-3 text-xs shadow-xl shadow-[#2c241f]/15">
+      <p className="font-extrabold text-[#2b241f]">{label}</p>
+      <div className="mt-2 space-y-1">
+        {payload.map((item) => (
+          <p key={`${item.name}-${item.dataKey}`} className="text-[#6b5e54]">
+            <span className="font-bold text-[#9b6f45]">
+              {item.name || item.dataKey}:
+            </span>{" "}
+            {item.dataKey === "amount"
+              ? formatCurrency(Number(item.value || 0))
+              : Number(item.value || 0).toLocaleString("en-LK")}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({
   title,
   value,
@@ -269,6 +339,7 @@ function StatCard({
   badge,
   iconColor,
   iconBg,
+  progress = 72,
 }: {
   title: string;
   value: string | number;
@@ -278,10 +349,11 @@ function StatCard({
   badge: string;
   iconColor: string;
   iconBg: string;
+  progress?: number;
 }) {
   return (
-    <Card className="group overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.16)] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:border-[#9b6f45]/45 hover:bg-[#fffaf3]">
-      <CardContent className="relative p-6">
+    <Card className="group h-full overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.16)] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:border-[#9b6f45]/45 hover:bg-[#fffaf3]">
+      <CardContent className="relative flex h-full flex-col p-6">
         <div
           className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full blur-3xl ${glow}`}
         />
@@ -300,24 +372,31 @@ function StatCard({
           </span>
         </div>
 
-        <p className="relative mt-6 text-sm font-semibold text-[#6b5e54]">
-          {title}
-        </p>
+        <div className="relative mt-6 flex flex-col items-center text-center">
+          <p className="text-sm font-semibold text-[#6b5e54]">
+            {title}
+          </p>
 
-        <h2 className="relative mt-2 text-4xl font-extrabold tracking-tight text-[#2b241f]">
-          {value}
-        </h2>
+          <h2 className="mt-3 break-words text-5xl font-black tracking-tight text-[#2b241f] drop-shadow-sm">
+            {value}
+          </h2>
 
-        <p className="relative mt-2 text-sm text-[#79695d]">{subtitle}</p>
+          <p className="mt-3 text-sm leading-6 text-[#79695d]">
+            {subtitle}
+          </p>
+        </div>
 
-        <div className="relative mt-6 rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/70 p-3 backdrop-blur-xl">
+        <div className="relative mt-auto pt-6">
           <div className="flex items-center justify-between text-xs font-semibold text-[#6b5e54]">
-            <span>Current Status</span>
-            <span className="text-[#9b6f45]">Live</span>
+            <span>Live Status</span>
+            <span className="text-[#9b6f45]">{progress}%</span>
           </div>
 
           <div className="mt-3 h-2 rounded-full bg-[#e9dccd]">
-            <div className="h-2 w-[72%] rounded-full bg-gradient-to-r from-[#2c241f] via-[#9b6f45] to-[#d8ad80]" />
+            <div
+              className="h-2 rounded-full bg-gradient-to-r from-[#2c241f] via-[#9b6f45] to-[#d8ad80]"
+              style={{ width: `${Math.min(Math.max(progress, 6), 100)}%` }}
+            />
           </div>
         </div>
       </CardContent>
@@ -403,7 +482,7 @@ export default function MemberDashboardPage() {
           setOverdueInstallment(null);
         }
 
-        if (result.monthlyFee && (result.monthlyFee.isOverdue || result.monthlyFee.status === "overdue")) {
+        if (result.monthlyFee) {
           const formattedDate = new Date(result.monthlyFee.dueDate).toLocaleDateString("en-US", {
             month: "short",
             day: "2-digit",
@@ -412,8 +491,8 @@ export default function MemberDashboardPage() {
 
           setUnpaidFee({
             id: result.monthlyFee.id,
-            month: result.monthlyFee.monthName,
-            year: result.monthlyFee.year,
+            month: result.monthlyFee.monthName || "Current Month",
+            year: result.monthlyFee.year || new Date().getFullYear(),
             amount: result.monthlyFee.amount,
             dueDate: formattedDate,
           });
@@ -467,9 +546,28 @@ export default function MemberDashboardPage() {
   const approvedPercentage = getPercentage(stats.approvedLoans, stats.totalLoans);
   const pendingPercentage = getPercentage(stats.pendingLoans, stats.totalLoans);
   const rejectedPercentage = getPercentage(stats.rejectedLoans, stats.totalLoans);
+  const activeLoansPercentage = getPercentage(stats.activeLoans, stats.totalLoans);
 
-  const maxDisbursementAmount = Math.max(...stats.monthlyDisbursements.map((item) => item.amount), 1);
-  const maxMemberGrowth = Math.max(...stats.memberGrowth.map((item) => Math.max(item.total, item.active)), 1);
+  const loanStatusData = useMemo(
+    () => [
+      {
+        name: "Approved",
+        value: stats.approvedLoans,
+        color: chartColors.green,
+      },
+      {
+        name: "Pending",
+        value: stats.pendingLoans,
+        color: chartColors.amber,
+      },
+      {
+        name: "Rejected",
+        value: stats.rejectedLoans,
+        color: chartColors.red,
+      },
+    ],
+    [stats.approvedLoans, stats.pendingLoans, stats.rejectedLoans]
+  );
 
   const announcements = stats.recentAnnouncements.length > 0
     ? stats.recentAnnouncements
@@ -604,7 +702,7 @@ export default function MemberDashboardPage() {
                     </span>
                   </div>
                   <p className="mt-2 max-w-3xl text-sm text-[#6b5e54]">
-                    Your monthly welfare contribution for {unpaidFee.month} {unpaidFee.year} is overdue. Please complete the payment.
+                    Your monthly welfare contribution for {unpaidFee.month} {unpaidFee.year} is overdue. Please complete the payment as soon as possible.
                   </p>
 
                   <div className="mt-6 flex flex-wrap gap-4">
@@ -616,6 +714,10 @@ export default function MemberDashboardPage() {
                       <p className="text-xs font-bold text-[#9b6f45]">Due Date</p>
                       <p className="mt-1 text-base font-extrabold text-[#2b241f]">{unpaidFee.dueDate}</p>
                     </div>
+                    <div className="rounded-2xl border border-[#d9c8b8] bg-[#fbf7ef]/90 px-6 py-4 shadow-sm">
+                      <p className="text-xs font-bold text-[#9b6f45]">Receipt</p>
+                      <p className="mt-1 text-base font-extrabold text-[#2b241f]">-</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -623,7 +725,7 @@ export default function MemberDashboardPage() {
               <div className="flex shrink-0 flex-row gap-3 lg:flex-col justify-end">
                 <Link href="/dashboard/payments">
                   <Button className="h-12 w-full min-w-[140px] rounded-2xl bg-[#9b6f45] px-6 text-white shadow-lg shadow-[#9b6f45]/20 hover:bg-[#835c38]">
-                    <CreditCard className="mr-2" size={18} /> Pay Fee
+                    <CreditCard className="mr-2" size={18} /> Pay Now
                   </Button>
                 </Link>
                 <Button 
@@ -759,6 +861,7 @@ export default function MemberDashboardPage() {
             badge="Live"
             iconColor="text-[#8a5f3c]"
             iconBg="bg-[#f1e5d8]"
+            progress={100}
           />
 
           <StatCard
@@ -770,6 +873,7 @@ export default function MemberDashboardPage() {
             badge="Live"
             iconColor="text-emerald-700"
             iconBg="bg-emerald-500/10"
+            progress={activeLoansPercentage}
           />
 
           <StatCard
@@ -781,6 +885,7 @@ export default function MemberDashboardPage() {
             badge="Pending"
             iconColor="text-orange-700"
             iconBg="bg-orange-500/10"
+            progress={pendingPercentage}
           />
 
           <StatCard
@@ -792,28 +897,31 @@ export default function MemberDashboardPage() {
             badge="Loans"
             iconColor="text-red-700"
             iconBg="bg-red-500/10"
+            progress={rejectedPercentage}
           />
 
           <StatCard
             title="Requested Amount"
-            value={formatCurrency(stats.totalRequestedAmount)}
-            subtitle="Recent application amount"
+            value={formatCompactCurrency(stats.totalRequestedAmount)}
+            subtitle={formatCurrency(stats.totalRequestedAmount)}
             icon={DollarSign}
             glow="bg-[#d8ad80]/25"
             badge="Live"
             iconColor="text-[#8a5f3c]"
             iconBg="bg-[#f1e5d8]"
+            progress={75}
           />
 
           <StatCard
             title="Monthly EMI"
-            value={formatCurrency(stats.totalEmiAmount)}
-            subtitle="Recent estimated installment total"
+            value={formatCompactCurrency(stats.totalEmiAmount)}
+            subtitle={formatCurrency(stats.totalEmiAmount)}
             icon={ClipboardCheck}
             glow="bg-orange-500/18"
             badge="Live"
             iconColor="text-amber-700"
             iconBg="bg-amber-500/10"
+            progress={65}
           />
 
           <StatCard
@@ -825,6 +933,7 @@ export default function MemberDashboardPage() {
             badge="Live"
             iconColor="text-teal-700"
             iconBg="bg-teal-500/10"
+            progress={approvedPercentage}
           />
 
           <StatCard
@@ -836,22 +945,22 @@ export default function MemberDashboardPage() {
             badge="Live"
             iconColor="text-[#8a5f3c]"
             iconBg="bg-[#f1e5d8]"
+            progress={100}
           />
         </section>
 
-        <section className="relative grid gap-6 xl:grid-cols-3">
-          <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl xl:col-span-2">
+        <section className="relative grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+          <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl">
             <CardContent className="relative p-6">
               <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#d8ad80]/25 blur-3xl" />
 
-              <div className="relative mb-6 flex items-center justify-between">
+              <div className="relative mb-6 flex flex-col justify-between gap-3 md:flex-row md:items-center">
                 <div>
                   <h2 className="text-2xl font-extrabold">
-                    Loan Application Overview
+                    Applications Overview
                   </h2>
                   <p className="mt-1 text-sm text-[#6b5e54]">
-                    Monthly requested amount trend for your recent welfare loan
-                    applications.
+                    Monthly application count and active loan records.
                   </p>
                 </div>
 
@@ -863,203 +972,115 @@ export default function MemberDashboardPage() {
                 </Button>
               </div>
 
-              <div className="relative flex h-[280px] items-end gap-4 rounded-[28px] border border-[#d9c8b8] bg-[#efe3d6]/70 p-5 backdrop-blur-xl">
-                {stats.monthlyDisbursements.map((item) => {
-                  const height =
-                    item.amount > 0
-                      ? Math.max(
-                          25,
-                          (item.amount / maxDisbursementAmount) * 100
-                        )
-                      : 0;
-
-                  return (
-                    <div
-                      key={item.month}
-                      className="flex h-full flex-1 flex-col items-center justify-end gap-2"
-                    >
-                      <div className="h-5 text-[10px] font-bold text-[#9b6f45]">
-                        {item.amount > 0
-                          ? `${Math.round(item.amount / 1000)}K`
-                          : ""}
-                      </div>
-
-                      <div className="flex h-[210px] w-full items-end justify-center">
-                        {item.amount > 0 ? (
-                          <div
-                            className="w-full rounded-t-xl bg-[#9b6f45] shadow-lg shadow-[#9b6f45]/30"
-                            style={{ height: `${height}%` }}
-                            title={`${item.month}: ${formatCurrency(
-                              item.amount
-                            )}`}
-                          />
-                        ) : (
-                          <div className="h-[2px] w-full rounded-full bg-[#d9c8b8]" />
-                        )}
-                      </div>
-
-                      <span className="text-[10px] font-semibold text-[#79695d]">
-                        {item.month}
-                      </span>
-                    </div>
-                  );
-                })}
+              <div className="h-[320px] rounded-[28px] border border-[#d9c8b8] bg-[#efe3d6]/70 p-5">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <LineChart data={stats.memberGrowth}>
+                    <CartesianGrid stroke="#d9c8b8" strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fill: "#79695d", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#79695d", fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      name="Total Applications"
+                      stroke={chartColors.brown}
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: chartColors.brown }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="active"
+                      name="Active Loans"
+                      stroke={chartColors.green}
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: chartColors.green }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl">
+          <Card className="overflow-hidden rounded-[32px] border border-[#3c332d] bg-[#2c241f] text-white shadow-[0_30px_100px_rgba(44,36,31,0.24)] backdrop-blur-2xl">
             <CardContent className="relative p-6">
-              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#d8ad80]/25 blur-3xl" />
+              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#d8ad80]/20 blur-3xl" />
 
-              <div className="relative mb-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-extrabold">Loan Updates</h2>
-                  <p className="mt-1 text-sm text-[#6b5e54]">
-                    Latest application status updates.
-                  </p>
-                </div>
+              <div className="relative">
+                <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#d8ad80]">
+                  Loans Summary
+                </p>
 
-                <Link
-                  href="/dashboard/loans"
-                  className="text-sm font-bold text-[#9b6f45]"
-                >
-                  View All
-                </Link>
+                <h2 className="mt-3 text-2xl font-extrabold">
+                  Loans by Status
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-[#ead9c8]/70">
+                  Summary of your loan workflow stages.
+                </p>
               </div>
 
-              <div className="relative space-y-3">
-                {announcements.map((item) => {
-                  return (
-                    <div
-                      key={item._id}
-                      className="flex gap-3 rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/75 p-4 backdrop-blur-xl"
+              <div className="relative mt-5 h-[235px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <PieChart>
+                    <Pie
+                      data={loanStatusData}
+                      dataKey="value"
+                      innerRadius={62}
+                      outerRadius={92}
+                      paddingAngle={3}
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d9c8b8] bg-[#f1e5d8] text-[#8a5f3c]">
-                        <Bell size={18} />
-                      </div>
+                      {loanStatusData.map((item) => (
+                        <Cell key={item.name} fill={item.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
 
-                      <div>
-                        <h3 className="text-sm font-bold text-[#2b241f]">
-                          {item.title}
-                        </h3>
-                        <p className="mt-1 text-xs leading-5 text-[#6b5e54]">
-                          {item.desc}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="relative grid gap-6 xl:grid-cols-3">
-          <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl">
-            <CardContent className="relative p-6">
-              <h2 className="text-2xl font-extrabold">Loans by Status</h2>
-              <p className="mt-1 text-sm text-[#6b5e54]">
-                Summary of your loan workflow stages.
-              </p>
-
-              <div className="mt-7 flex items-center justify-center">
-                <div className="relative flex h-44 w-44 items-center justify-center rounded-full border-[22px] border-[#9b6f45] shadow-[0_25px_80px_rgba(91,60,32,0.25)]">
-                  <div className="absolute inset-[-22px] rounded-full border-[22px] border-b-red-400 border-l-[#9b6f45] border-r-orange-400 border-t-emerald-400" />
-                  <div className="z-10 rounded-full bg-[#f8f1e8] p-4 text-center backdrop-blur-xl">
-                    <p className="text-xs font-semibold text-[#6b5e54]">
-                      Total Loans
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-xs font-semibold text-[#ead9c8]/70">
+                      Total
                     </p>
-                    <p className="text-3xl font-extrabold text-[#2b241f]">
+                    <p className="text-3xl font-extrabold">
                       {stats.totalLoans}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-7 grid gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-[#6b5e54]">Approved</span>
-                  <span className="font-bold text-emerald-700">
-                    {approvedPercentage}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#6b5e54]">Pending</span>
-                  <span className="font-bold text-orange-700">
-                    {pendingPercentage}%
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#6b5e54]">Rejected</span>
-                  <span className="font-bold text-red-700">
-                    {rejectedPercentage}%
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl">
-            <CardContent className="relative p-6">
-              <h2 className="text-2xl font-extrabold">Applications Overview</h2>
-              <p className="mt-1 text-sm text-[#6b5e54]">
-                New and active loan activity.
-              </p>
-
-              <div className="mt-7 flex h-56 items-end gap-4 rounded-[28px] border border-[#d9c8b8] bg-[#efe3d6]/70 p-5">
-                {stats.memberGrowth.map((item) => {
-                  const totalHeight =
-                    item.total > 0
-                      ? Math.max(25, (item.total / maxMemberGrowth) * 100)
-                      : 0;
-
-                  const activeHeight =
-                    item.active > 0
-                      ? Math.max(25, (item.active / maxMemberGrowth) * 100)
-                      : 0;
-
-                  return (
-                    <div
-                      key={item.month}
-                      className="flex h-full flex-1 flex-col items-center justify-end gap-2"
-                    >
-                      <div className="h-5 text-[10px] font-bold text-[#9b6f45]">
-                        {item.total > 0 ? item.total : ""}
-                      </div>
-
-                      <div className="flex h-[150px] w-full items-end justify-center gap-1">
-                        {item.total > 0 ? (
-                          <div
-                            className="w-1/2 rounded-t-lg bg-[#9b6f45] shadow"
-                            style={{ height: `${totalHeight}%` }}
-                            title={`${item.month} applications: ${item.total}`}
-                          />
-                        ) : (
-                          <div className="h-[2px] w-1/2 rounded-full bg-[#d9c8b8]" />
-                        )}
-
-                        {item.active > 0 ? (
-                          <div
-                            className="w-1/2 rounded-t-lg bg-emerald-600 shadow"
-                            style={{ height: `${activeHeight}%` }}
-                            title={`${item.month} active: ${item.active}`}
-                          />
-                        ) : (
-                          <div className="h-[2px] w-1/2 rounded-full bg-[#d9c8b8]" />
-                        )}
-                      </div>
-
-                      <span className="text-[10px] font-semibold text-[#79695d]">
-                        {item.month}
-                      </span>
+              <div className="mt-4 grid gap-2">
+                {loanStatusData.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-[#ead9c8]/80">{item.name}</span>
                     </div>
-                  );
-                })}
+
+                    <span className="font-extrabold">{item.value}</span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
+        </section>
 
+        <section className="relative grid gap-6 xl:grid-cols-3">
           <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl">
             <CardContent className="relative p-6">
               <h2 className="text-2xl font-extrabold">Quick Shortcuts</h2>
@@ -1099,6 +1120,52 @@ export default function MemberDashboardPage() {
                   iconColor="text-orange-700"
                   iconBg="bg-orange-500/10"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl xl:col-span-2">
+            <CardContent className="relative p-6">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#d8ad80]/25 blur-3xl" />
+
+              <div className="relative mb-6 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-extrabold">Loan Updates</h2>
+                  <p className="mt-1 text-sm text-[#6b5e54]">
+                    Latest application status updates.
+                  </p>
+                </div>
+
+                <Link
+                  href="/dashboard/loans"
+                  className="text-sm font-bold text-[#9b6f45]"
+                >
+                  View All
+                </Link>
+              </div>
+
+              <div className="relative space-y-3">
+                {announcements.map((item) => {
+                  return (
+                    <div
+                      key={item._id}
+                      className="flex gap-3 rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/75 p-4 backdrop-blur-xl"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d9c8b8] bg-[#f1e5d8] text-[#8a5f3c]">
+                        <Bell size={18} />
+                      </div>
+
+                      <div>
+                        <h3 className="text-sm font-bold text-[#2b241f]">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-xs leading-5 text-[#6b5e54]">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

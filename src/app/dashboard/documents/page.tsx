@@ -138,36 +138,71 @@ function StatCard({
   value,
   subtitle,
   icon: Icon,
+  glow,
+  badge,
   iconColor,
   iconBg,
+  progress = 72,
 }: {
   title: string;
-  value: number;
+  value: string | number;
   subtitle: string;
   icon: React.ElementType;
+  glow: string;
+  badge: string;
   iconColor: string;
   iconBg: string;
+  progress?: number;
 }) {
   return (
-    <Card className="overflow-hidden rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)] backdrop-blur-2xl">
-      <CardContent className="relative p-6">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#d8ad80]/25 blur-3xl" />
-
+    <Card className="group h-full overflow-hidden rounded-[32px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.16)] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:border-[#9b6f45]/45 hover:bg-[#fffaf3]">
+      <CardContent className="relative flex h-full flex-col p-6">
         <div
-          className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d9c8b8] ${iconBg} ${iconColor}`}
-        >
-          <Icon size={26} />
+          className={`pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full blur-3xl ${glow}`}
+        />
+
+        <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-[#d8ad80]/18 blur-3xl" />
+
+        <div className="relative flex items-start justify-between">
+          <div
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d9c8b8] ${iconBg} ${iconColor} shadow-lg backdrop-blur-xl`}
+          >
+            <Icon size={25} />
+          </div>
+
+          <span className="rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-3 py-1 text-[11px] font-bold text-[#9b6f45] backdrop-blur-xl">
+            {badge}
+          </span>
         </div>
 
-        <p className="relative mt-5 text-sm font-semibold text-[#6b5e54]">
-          {title}
-        </p>
+        {/* Text Details Centered & Highlighted to match Dashboards */}
+        <div className="relative mt-6 flex flex-col items-center text-center">
+          <p className="text-sm font-semibold text-[#6b5e54]">
+            {title}
+          </p>
 
-        <h2 className="relative mt-2 text-4xl font-extrabold text-[#2b241f]">
-          {value}
-        </h2>
+          <h2 className="mt-3 break-words text-5xl font-black tracking-tight text-[#2b241f] drop-shadow-sm">
+            {value}
+          </h2>
 
-        <p className="relative mt-2 text-sm text-[#79695d]">{subtitle}</p>
+          <p className="mt-3 text-sm leading-6 text-[#79695d]">
+            {subtitle}
+          </p>
+        </div>
+
+        <div className="relative mt-auto pt-6">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#6b5e54]">
+            <span>Live Status</span>
+            <span className="text-[#9b6f45]">{progress}%</span>
+          </div>
+
+          <div className="mt-3 h-2 rounded-full bg-[#e9dccd]">
+            <div
+              className="h-2 rounded-full bg-gradient-to-r from-[#2c241f] via-[#9b6f45] to-[#d8ad80]"
+              style={{ width: `${Math.min(Math.max(progress, 6), 100)}%` }}
+            />
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -410,8 +445,11 @@ export default function DocumentsPage() {
             value={totalCount}
             subtitle="All uploaded documents"
             icon={FileText}
+            glow="bg-[#d8ad80]/30"
+            badge="Docs"
             iconColor="text-[#8a5f3c]"
             iconBg="bg-[#f1e5d8]"
+            progress={100}
           />
 
           <StatCard
@@ -419,8 +457,11 @@ export default function DocumentsPage() {
             value={verifiedCount}
             subtitle="Approved by officer"
             icon={CheckCircle2}
+            glow="bg-emerald-500/18"
+            badge="Verified"
             iconColor="text-emerald-700"
             iconBg="bg-emerald-500/10"
+            progress={totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0}
           />
 
           <StatCard
@@ -428,8 +469,11 @@ export default function DocumentsPage() {
             value={pendingCount}
             subtitle="Waiting verification"
             icon={Clock3}
+            glow="bg-orange-500/18"
+            badge="Pending"
             iconColor="text-orange-700"
             iconBg="bg-orange-500/10"
+            progress={totalCount > 0 ? Math.round((pendingCount / totalCount) * 100) : 0}
           />
 
           <StatCard
@@ -437,8 +481,11 @@ export default function DocumentsPage() {
             value={rejectedCount}
             subtitle="Need correction"
             icon={XCircle}
+            glow="bg-red-500/16"
+            badge="Rejected"
             iconColor="text-red-700"
             iconBg="bg-red-500/10"
+            progress={totalCount > 0 ? Math.round((rejectedCount / totalCount) * 100) : 0}
           />
         </section>
 
@@ -653,7 +700,7 @@ export default function DocumentsPage() {
         </section>
 
         <section className="grid gap-5 md:grid-cols-3">
-          <Card className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)]">
+          <Card className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_25px_90px_rgba(44,36,31,0.18)]">
             <CardContent className="p-6">
               <ShieldCheck className="text-[#8a5f3c]" size={28} />
               <h3 className="mt-5 text-xl font-extrabold">Easy Search</h3>
@@ -664,7 +711,7 @@ export default function DocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)]">
+          <Card className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_25px_90px_rgba(44,36,31,0.18)]">
             <CardContent className="p-6">
               <Clock3 className="text-orange-700" size={28} />
               <h3 className="mt-5 text-xl font-extrabold">
@@ -676,7 +723,7 @@ export default function DocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)]">
+          <Card className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 text-[#2b241f] shadow-[0_24px_80px_rgba(44,36,31,0.12)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_25px_90px_rgba(44,36,31,0.18)]">
             <CardContent className="p-6">
               <FileText className="text-emerald-700" size={28} />
               <h3 className="mt-5 text-xl font-extrabold">Applicant Linked</h3>

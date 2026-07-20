@@ -258,19 +258,22 @@ function StatCard({
           </span>
         </div>
 
-        <p className="relative mt-5 text-sm font-semibold text-[#6b5e54]">
-          {title}
-        </p>
+        {/* Text Details Centered & Highlighted */}
+        <div className="relative mt-6 flex flex-col items-center text-center">
+          <p className="text-sm font-semibold text-[#6b5e54]">
+            {title}
+          </p>
 
-        <h2 className="relative mt-2 break-words text-3xl font-extrabold tracking-tight text-[#2b241f]">
-          {value}
-        </h2>
+          <h2 className="mt-3 break-words text-5xl font-black tracking-tight text-[#2b241f] drop-shadow-sm">
+            {value}
+          </h2>
 
-        <p className="relative mt-2 text-sm leading-6 text-[#79695d]">
-          {subtitle}
-        </p>
+          <p className="mt-3 text-sm leading-6 text-[#79695d]">
+            {subtitle}
+          </p>
+        </div>
 
-        <div className="relative mt-auto pt-5">
+        <div className="relative mt-auto pt-6">
           <div className="flex items-center justify-between text-xs font-semibold text-[#6b5e54]">
             <span>Report Ratio</span>
             <span className="text-[#9b6f45]">{ratio}%</span>

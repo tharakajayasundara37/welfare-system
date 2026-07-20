@@ -176,12 +176,12 @@ export default function NotificationsPage() {
             <ArrowLeft />
           </Link>
 
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
             <Bell /> Notifications
           </h1>
 
           {unreadCount > 0 && (
-            <span className="rounded-full bg-[#9b6f45] px-3 py-1 text-white text-sm">
+            <span className="rounded-full bg-[#9b6f45] px-3 py-1 text-sm text-white">
               {unreadCount} unread
             </span>
           )}
@@ -208,7 +208,7 @@ export default function NotificationsPage() {
           <button
             key={t}
             onClick={() => setSelectedType(t)}
-            className={`rounded-full px-4 py-1 text-sm border ${
+            className={`rounded-full border px-4 py-1 text-sm ${
               selectedType === t ? "bg-black text-white" : ""
             }`}
           >
@@ -233,8 +233,11 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {notifications.map((n) => (
-            <Card key={n._id} className={!n.isRead ? "border-l-4 border-blue-500" : ""}>
+          {notifications.map((n, index) => (
+            <Card
+              key={`${n._id}-${index}`} // <--- මෙතන තමයි Fix එක කළේ!
+              className={!n.isRead ? "border-l-4 border-blue-500" : ""}
+            >
               <CardContent className="p-4">
                 <div className="flex justify-between">
                   <div>
@@ -263,7 +266,7 @@ export default function NotificationsPage() {
 
       {/* LOAD MORE */}
       {notifications.length < total && (
-        <div className="flex justify-center mt-4">
+        <div className="mt-4 flex justify-center">
           <Button onClick={() => loadNotifications(false)} disabled={loading}>
             {loading ? "Loading..." : "Load more"}
           </Button>

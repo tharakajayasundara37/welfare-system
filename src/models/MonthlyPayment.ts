@@ -32,7 +32,7 @@ const monthlyPaymentSchema = new Schema(
       type: String,
       enum: ["pending", "paid", "overdue", "failed"],
       default: "pending",
-      index: true,
+      // මෙතන තිබුණු index: true, කෑල්ල අයින් කළා Duplicate Warning එක නැති කරන්න
     },
 
     paymentMethod: {
@@ -104,13 +104,13 @@ const monthlyPaymentSchema = new Schema(
     },
 
     lastReminderSentAt: {
-    type: Date,
-    default: null,
+      type: Date,
+      default: null,
     },
 
     reminderCount: {
-    type: Number,
-    default: 0,
+      type: Number,
+      default: 0,
     },
     
   },
@@ -120,6 +120,7 @@ const monthlyPaymentSchema = new Schema(
 );
 
 monthlyPaymentSchema.index({ userId: 1, month: 1, year: 1 }, { unique: true });
+// යටින් status එකට index එකක් දීලා තියෙන නිසා තමයි උඩින් අයින් කළේ 👇
 monthlyPaymentSchema.index({ status: 1 });
 monthlyPaymentSchema.index({ paidAt: -1 });
 monthlyPaymentSchema.index({ dueDate: 1 });
