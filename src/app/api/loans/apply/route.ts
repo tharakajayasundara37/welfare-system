@@ -70,17 +70,20 @@ function safeFileName(fileName: string) {
     .toLowerCase();
 }
 
+// අලුත් කළ Function එක
 async function saveUploadedFile(file: File, loanId: string, documentType: string) {
   try {
     const timestamp = Date.now();
     const cleanedOriginalName = safeFileName(file.name);
     const blobPath = `loan-documents/${loanId}/${documentType}-${timestamp}-${cleanedOriginalName}`;
 
-    // Vercel Blob එක Private බැවින් access එක "private" ලෙස යොදා, 
-    // OIDC Error එක මඟහැරීම සඳහා Token එක අනිවාර්ය කර ඇත.
-    const blob = await put(blobPath, file, { 
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const blob = await put(blobPath, buffer, { 
       access: "private",
-      token: process.env.BLOB_READ_WRITE_TOKEN
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      contentType: file.type
     });
 
     return {
@@ -92,7 +95,6 @@ async function saveUploadedFile(file: File, loanId: string, documentType: string
       size: file.size,
     };
   } catch (error) {
-    // Vercel Blob Upload වීමේදී එන නියම Error එක Console එකේ පෙන්වයි
     console.error(`Error uploading ${documentType} to Vercel Blob:`, error);
     throw new Error(`Failed to upload ${documentType}`);
   }
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ success: false, message: "Unauthorized. Please login first." }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -113,7 +115,6 @@ export async function POST(request: NextRequest) {
     const purpose = getStringValue(formData, "purpose");
     const monthlyIncome = getStringValue(formData, "monthlyIncome");
     const employmentType = getStringValue(formData, "employmentType");
-
     const guarantorName = getStringValue(formData, "guarantorName");
     const guarantorPhone = getStringValue(formData, "guarantorPhone");
     const guarantorNic = getStringValue(formData, "guarantorNic");
@@ -124,13 +125,10 @@ export async function POST(request: NextRequest) {
     const requiredFiles = Object.keys(activeDocumentLabels);
 
     if (!loanType || !requestedAmount || !purpose || !monthlyIncome || !employmentType) {
-      return NextResponse.json({ success: false, message: "All required loan/support details must be filled." }, { status: 400 });
+      return NextResponse.json({ success: false, message: "All required fields must be filled." }, { status: 400 });
     }
 
-    if (!isFuneralSupport && (!guarantorName || !guarantorPhone || !guarantorNic || !preferredPeriodMonths)) {
-      return NextResponse.json({ success: false, message: "All required loan and guarantor details must be filled." }, { status: 400 });
-    }
-
+    // Validation
     for (const fileKey of requiredFiles) {
       const file = formData.get(fileKey);
       if (!(file instanceof File) || file.size === 0) {
@@ -141,14 +139,6 @@ export async function POST(request: NextRequest) {
     const loanAmount = Number(requestedAmount);
     const income = Number(monthlyIncome);
     const periodMonths = isFuneralSupport ? 0 : Number(preferredPeriodMonths);
-
-    if (Number.isNaN(loanAmount) || loanAmount <= 0 || Number.isNaN(income) || income <= 0) {
-      return NextResponse.json({ success: false, message: "Invalid loan/support details." }, { status: 400 });
-    }
-
-    if (!isFuneralSupport && (Number.isNaN(periodMonths) || periodMonths <= 0)) {
-      return NextResponse.json({ success: false, message: "Invalid repayment period." }, { status: 400 });
-    }
 
     let settings = await LoanSetting.findOne({ isActive: true }).sort({ createdAt: -1 });
     if (!settings) {
@@ -193,14 +183,11 @@ export async function POST(request: NextRequest) {
       status: "under_welfare_review",
     });
 
-    const createdDocuments = [];
     for (const fileKey of requiredFiles) {
       const file = formData.get(fileKey);
       if (file instanceof File) {
         const savedFile = await saveUploadedFile(file, loan._id.toString(), fileKey);
-        
-        // මේ ටික තමයි මගෙන් කලින් මිස් වුණේ
-        const document = await Document.create({
+        await Document.create({
           userId: user._id,
           loanId: loan._id,
           documentType: fileKey,
@@ -213,7 +200,6 @@ export async function POST(request: NextRequest) {
           size: savedFile.size,
           status: "uploaded",
         });
-        createdDocuments.push(document);
       }
     }
 

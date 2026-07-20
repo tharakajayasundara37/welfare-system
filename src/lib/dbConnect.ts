@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI");
+  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
 }
 
 interface MongooseCache {
@@ -24,16 +24,25 @@ async function dbConnect() {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI as string, {
+    const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
-    });
+      // සේවාදායකයේ DNS ගැටළු වලදී උදව් වේ
+      family: 4, 
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI as string, opts);
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+  
   global.mongooseCache = cached;
-
   return cached.conn;
 }
 
