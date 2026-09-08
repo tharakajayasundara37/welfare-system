@@ -13,8 +13,17 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Installment = {
   _id: string;
@@ -83,8 +92,15 @@ export default function InstallmentsPage() {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  const [selectedInstallment, setSelectedInstallment] = useState<Installment | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [selectedInstallment, setSelectedInstallment] =
+    useState<Installment | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    cardHolderName: "",
+    cardNumber: "",
+    expiry: "",
+    cvv: "",
+  });
 
   const loadInstallments = useCallback(async (showLoader = false) => {
     try {
@@ -145,20 +161,33 @@ export default function InstallmentsPage() {
 
   function openPayment(installment: Installment) {
     setSelectedInstallment(installment);
+    setPaymentForm({
+      cardHolderName: "",
+      cardNumber: "",
+      expiry: "",
+      cvv: "",
+    });
     setMessage("");
     setError("");
   }
 
-  async function handlePayInstallment() {
+  async function handlePayInstallment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     if (!selectedInstallment) return;
 
     try {
+      setPaying(true);
       setMessage("");
       setError("");
 
       const response = await fetch(
         `/api/member/installments/${selectedInstallment._id}/pay`,
-        { method: "POST" }
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paymentForm),
+        }
       );
 
       const data = await response.json();
@@ -170,9 +199,17 @@ export default function InstallmentsPage() {
 
       setMessage(data.message || "Installment paid successfully.");
       setSelectedInstallment(null);
+      setPaymentForm({
+        cardHolderName: "",
+        cardNumber: "",
+        expiry: "",
+        cvv: "",
+      });
       await loadInstallments(true);
-    } catch (error) {
+    } catch {
       setError("Something went wrong while paying installment");
+    } finally {
+      setPaying(false);
     }
   }
 
@@ -240,6 +277,18 @@ export default function InstallmentsPage() {
           </div>
         </div>
       </div>
+
+      {message && (
+        <div className="mb-6 rounded-2xl border border-emerald-600/25 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+          {message}
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 rounded-2xl border border-red-600/20 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      )}
 
       {/* Search */}
       <div className="mb-6 flex items-center gap-2 rounded-3xl border border-[#d9c8b8] bg-[#fbf7ef] px-4 py-3 shadow">
@@ -349,6 +398,150 @@ export default function InstallmentsPage() {
           </table>
         </div>
       )}
+
+      <Dialog
+        open={Boolean(selectedInstallment)}
+        onOpenChange={(open) => {
+          if (!open && !paying) setSelectedInstallment(null);
+        }}
+      >
+        <DialogContent className="border-[#d9c8b8] bg-[#fbf7ef] p-6 text-[#2b241f] sm:max-w-lg">
+          <form onSubmit={handlePayInstallment}>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-extrabold">
+                Pay installment
+              </DialogTitle>
+              <DialogDescription className="leading-6 text-[#6b5e54]">
+                This is a demo payment. No real card charge will be made.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedInstallment && (
+              <div className="mt-5 rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#9b6f45]">
+                      {selectedInstallment.loanId?.loanType || "Loan"}
+                    </p>
+                    <p className="mt-1 font-extrabold">
+                      Installment #{selectedInstallment.installmentNumber}
+                    </p>
+                  </div>
+                  <p className="text-lg font-black">
+                    {formatCurrency(
+                      selectedInstallment.amount +
+                        (selectedInstallment.penaltyAmount || 0)
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-4 rounded-2xl border border-red-600/20 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                {error}
+              </div>
+            )}
+
+            <div className="mt-5 grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="installment-card-holder">Card holder name</Label>
+                <Input
+                  id="installment-card-holder"
+                  value={paymentForm.cardHolderName}
+                  onChange={(event) =>
+                    setPaymentForm((current) => ({
+                      ...current,
+                      cardHolderName: event.target.value,
+                    }))
+                  }
+                  placeholder="Name on card"
+                  autoComplete="cc-name"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="installment-card-number">Card number</Label>
+                <Input
+                  id="installment-card-number"
+                  value={paymentForm.cardNumber}
+                  onChange={(event) =>
+                    setPaymentForm((current) => ({
+                      ...current,
+                      cardNumber: event.target.value,
+                    }))
+                  }
+                  placeholder="4242 4242 4242 4242"
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                  minLength={12}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="installment-expiry">Expiry</Label>
+                  <Input
+                    id="installment-expiry"
+                    value={paymentForm.expiry}
+                    onChange={(event) =>
+                      setPaymentForm((current) => ({
+                        ...current,
+                        expiry: event.target.value,
+                      }))
+                    }
+                    placeholder="MM/YY"
+                    autoComplete="cc-exp"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="installment-cvv">CVV</Label>
+                  <Input
+                    id="installment-cvv"
+                    type="password"
+                    value={paymentForm.cvv}
+                    onChange={(event) =>
+                      setPaymentForm((current) => ({
+                        ...current,
+                        cvv: event.target.value,
+                      }))
+                    }
+                    placeholder="123"
+                    inputMode="numeric"
+                    autoComplete="cc-csc"
+                    minLength={3}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-6 border-[#d9c8b8] bg-[#f1e5d8]/60">
+              <DialogClose asChild>
+                <Button type="button" variant="outline" disabled={paying}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={paying}
+                className="bg-[#9b6f45] text-white hover:bg-[#835c38]"
+              >
+                {paying ? (
+                  <Loader2 className="mr-2 animate-spin" size={17} />
+                ) : (
+                  <CreditCard className="mr-2" size={17} />
+                )}
+                {paying ? "Processing..." : "Confirm mock payment"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

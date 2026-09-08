@@ -23,6 +23,15 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -57,6 +66,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPasswordHelp, setShowPasswordHelp] = useState(false);
 
   const {
     register,
@@ -344,6 +354,7 @@ export default function LoginPage() {
 
                 <button
                   type="button"
+                  onClick={() => setShowPasswordHelp(true)}
                   className="text-sm font-semibold text-[#9b6f45] transition hover:text-[#2b241f] hover:underline"
                 >
                   Forgot password?
@@ -418,6 +429,31 @@ export default function LoginPage() {
           </div>
         </div>
       </section>
+
+      <Dialog open={showPasswordHelp} onOpenChange={setShowPasswordHelp}>
+        <DialogContent className="border-[#d9c8b8] bg-[#fbf7ef] p-6 text-[#2b241f] sm:max-w-md">
+          <DialogHeader>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2c241f] text-[#d8ad80]">
+              <Lock size={22} />
+            </div>
+            <DialogTitle className="mt-3 text-2xl font-extrabold">
+              Password help
+            </DialogTitle>
+            <DialogDescription className="leading-6 text-[#6b5e54]">
+              Password recovery is handled by your organization administrator.
+              Contact the welfare admin with your registered email address to
+              request a secure reset.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-5 border-[#d9c8b8] bg-[#f1e5d8]/60">
+            <DialogClose asChild>
+              <Button type="button" className="bg-[#9b6f45] text-white hover:bg-[#835c38]">
+                Back to login
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

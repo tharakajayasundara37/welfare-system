@@ -139,11 +139,30 @@
 .dashboard-no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-.dashboard-no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
 
-.dashboard-no-scrollbar::-webkit-scrollbar {
-  display: none;
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible;
+  }
+
+  .receipt-print-area {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    transform: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .receipt-print-actions,
+  [data-slot="dialog-close"],
+  [data-slot="dialog-overlay"] {
+    display: none !important;
+  }
 }

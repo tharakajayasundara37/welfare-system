@@ -12,6 +12,12 @@ function maskCardNumber(cardNumber: string) {
   return digits ? `**** **** **** ${digits.slice(-4)}` : "";
 }
 
+function generateReceiptNumber() {
+  return `WF-INS-${new Date().getFullYear()}-${Math.floor(
+    100000 + Math.random() * 900000
+  )}`;
+}
+
 function getPaymentOpenDate(dueDate: Date) {
   const paymentOpenDate = new Date(dueDate);
   paymentOpenDate.setDate(paymentOpenDate.getDate() - 1);
@@ -85,21 +91,27 @@ export async function POST(
     }
 
     const paymentReference = `INS-PAY-${Date.now()}`;
-    const paidAmount = Number(installment.amount || 0);
+    const receiptNumber = generateReceiptNumber();
+    const installmentAmount = Number(installment.amount || 0);
+    const penaltyAmount = Number(installment.penaltyAmount || 0);
+    const paidAmount = installmentAmount + penaltyAmount;
 
     installment.status = "paid";
     installment.paidAt = new Date();
     installment.paidAmount = paidAmount;
     installment.paymentReference = paymentReference;
+    installment.receiptNumber = receiptNumber;
+    installment.paymentMethod = "mock_card";
+    installment.maskedCardNumber = maskCardNumber(cardNumber);
 
     await installment.save();
 
     const loan = await Loan.findById(installment.loanId);
 
     if (loan) {
-      loan.paidAmount = Number(loan.paidAmount || 0) + paidAmount;
+      loan.paidAmount = Number(loan.paidAmount || 0) + installmentAmount;
       loan.remainingBalance = Math.max(
-        Number(loan.remainingBalance || 0) - paidAmount,
+        Number(loan.remainingBalance || 0) - installmentAmount,
         0
       );
       loan.totalPaidInstallments = Number(loan.totalPaidInstallments || 0) + 1;
@@ -148,6 +160,7 @@ export async function POST(
       message: "Installment paid successfully.",
       installment,
       paymentReference,
+      receiptNumber,
     });
   } catch (error) {
     console.error("MEMBER_INSTALLMENT_PAY_ERROR", error);

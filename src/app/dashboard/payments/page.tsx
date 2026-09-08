@@ -155,7 +155,7 @@ export default function MemberPaymentsPage() {
           <PaymentActionCard
             title="Loan Installments"
             description="View EMI due dates, monthly installment amount and active loan repayment status."
-            href="/dashboard/payments/installments"
+            href="/dashboard/installments"
             icon={HandCoins}
             badge="EMI"
           />

@@ -543,16 +543,13 @@ export default function AdminDashboardPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button
-                variant="outline"
-                className="rounded-2xl border-[#d9c8b8] bg-[#f8f1e8]/80 text-[#2b241f] backdrop-blur-xl hover:bg-[#fffaf3]"
-              >
+              <div className="inline-flex h-8 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 px-3 text-sm font-medium text-[#2b241f] backdrop-blur-xl">
                 {new Date().toLocaleDateString("en-LK", {
                   day: "2-digit",
                   month: "short",
                   year: "numeric",
                 })}
-              </Button>
+              </div>
 
               <Link href="/dashboard/admin/reports">
                 <Button className="w-full rounded-2xl bg-[#9b6f45] px-5 text-white shadow-lg shadow-[#9b6f45]/25 hover:bg-[#835c38] sm:w-auto">
@@ -683,12 +680,9 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="rounded-2xl border-[#d9c8b8] bg-[#f8f1e8]/80 text-[#2b241f] hover:bg-[#fffaf3]"
-                >
+                <span className="inline-flex h-8 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 px-3 text-sm font-medium text-[#2b241f]">
                   Last 12 Months
-                </Button>
+                </span>
               </div>
 
               <div className="h-[320px] rounded-[28px] border border-[#d9c8b8] bg-[#efe3d6]/70 p-5">

@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         message:
-          error instanceof Error ? error.message : "Login failed. Try again.",
+          "Login service is temporarily unavailable. Please contact the administrator.",
       },
       { status: 500 }
     );

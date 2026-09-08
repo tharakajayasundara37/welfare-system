@@ -58,6 +58,24 @@ const installmentSchema = new Schema(
       trim: true,
     },
 
+    receiptNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    paymentMethod: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    maskedCardNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     reminderSent: {
       type: Boolean,
       default: false,

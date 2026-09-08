@@ -77,8 +77,8 @@ const workflow = [
 ];
 
 const highlights = [
-  "Runs locally on localhost:3000",
-  "Designed as an internal system, not a public website",
+  "Secure access for approved organization users",
+  "Designed as an internal management system",
   "Role-based dashboards for system users",
   "Loan, grant, document and finance workflow support",
   "Payment gateway based flow without internal wallet balance",
@@ -152,10 +152,8 @@ export default function HomePage() {
                 </p>
 
                 <p className="mt-4 max-w-3xl text-sm leading-7 text-[#79695d] md:text-base">
-                  The system runs on{" "}
-                  <span className="font-extrabold text-[#9b6f45]">
-                  </span>{" "}
-                  and is designed for internal organizational use.
+                  The system is available through a secure web deployment and
+                  is designed for internal organizational use.
                 </p>
 
                 <div className="mt-9 flex flex-wrap gap-3">

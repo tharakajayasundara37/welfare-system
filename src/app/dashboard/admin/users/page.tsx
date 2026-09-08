@@ -347,10 +347,10 @@ export default function AdminUsersPage() {
                 Refresh
               </Button>
 
-              <Button className="rounded-2xl bg-[#2c241f] px-5 text-[#fbf7ef] shadow-lg shadow-[#2c241f]/20 transition hover:bg-[#9b6f45]">
+              <div className="inline-flex h-8 items-center justify-center rounded-2xl bg-[#2c241f] px-5 text-sm font-medium text-[#fbf7ef] shadow-lg shadow-[#2c241f]/20">
                 <UserCheck className="mr-2" size={17} />
                 {totalMembers} Members
-              </Button>
+              </div>
             </div>
           </div>
         </section>

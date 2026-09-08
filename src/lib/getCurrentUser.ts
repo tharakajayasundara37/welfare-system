@@ -32,6 +32,10 @@ function normalizeThemeMode(themeMode?: string): ThemeMode {
 }
 
 export async function getCurrentUser() {
+  if (!process.env.MONGODB_URI) {
+    return null;
+  }
+
   try {
     await dbConnect();
 
