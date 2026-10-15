@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Installment from "@/models/Installment";
 import Loan from "@/models/Loan";
@@ -15,8 +15,18 @@ function roundToTwo(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized request" },
+        { status: 401 }
+      );
+    }
+
     await dbConnect();
 
     // Get penalty rate from admin settings (default 2%)
@@ -61,13 +71,16 @@ export async function GET() {
           dueDate: installment.dueDate,
         });
 
-        await sendSms({ to: memberPhone, message: smsMessage });
+        const smsResult = await sendSms({ to: memberPhone, message: smsMessage });
 
-        installment.reminderSent = true;
-        installment.reminderSentAt = new Date();
-        await installment.save();
-
-        remindersSent++;
+        if (smsResult.success) {
+          installment.reminderSent = true;
+          installment.reminderSentAt = new Date();
+          await installment.save();
+          remindersSent++;
+        } else {
+          console.error("PRE_DUE_SMS_FAILED", smsResult.message);
+        }
       }
     }
 

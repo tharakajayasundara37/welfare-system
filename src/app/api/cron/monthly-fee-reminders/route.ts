@@ -28,13 +28,9 @@ function canSendReminder(lastReminderSentAt?: Date | string | null) {
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
-    const secret = process.env.MEETING_REMINDER_SECRET;
+    const secret = process.env.CRON_SECRET;
 
-    if (
-      process.env.NODE_ENV === "production" &&
-      secret &&
-      authHeader !== `Bearer ${secret}`
-    ) {
+    if (!secret || authHeader !== `Bearer ${secret}`) {
       return NextResponse.json(
         {
           success: false,

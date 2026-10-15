@@ -58,7 +58,7 @@ export async function sendSms({
     if (!apiKey) {
       return {
         success: false,
-        message: "TEXTLK_API_KEY is missing in .env.local.",
+        message: "TEXTLK_API_KEY is not configured in the application environment.",
         to,
       };
     }
@@ -175,12 +175,14 @@ export function buildMeetingReminderSms({
   const timeText = meetingAt.toLocaleTimeString("en-LK", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Colombo",
   });
 
   const dateText = meetingAt.toLocaleDateString("en-LK", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Colombo",
   });
 
   const shortReason =
@@ -202,6 +204,7 @@ export function buildInstallmentReminderSms({
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Colombo",
   });
 
   return `Welfare Reminder: Your ${loanType} installment of Rs. ${Number(
@@ -233,6 +236,7 @@ export function buildPreDueDateSms({
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Colombo",
   });
   return `Welfare Reminder: Your loan installment of Rs. ${Number(
     amount

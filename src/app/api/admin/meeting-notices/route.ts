@@ -5,7 +5,6 @@ import dbConnect from "@/lib/dbConnect";
 
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { createNotification } from "@/lib/notifications/createNotification";
-import { buildMeetingReminderSms, sendSms } from "@/lib/sms/sendSms";
 
 import MeetingNotice from "@/models/MeetingNotice";
 import User from "@/models/User";
@@ -22,7 +21,7 @@ function buildMeetingDateTime(meetingDate: string, meetingTime: string) {
 
   if (!date || !time) return null;
 
-  const meetingAt = new Date(`${date}T${time}:00`);
+  const meetingAt = new Date(`${date}T${time}:00+05:30`);
 
   if (Number.isNaN(meetingAt.getTime())) return null;
 
@@ -225,58 +224,16 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    let smsSentCount = 0;
-    let smsFailedCount = 0;
-
-    if (smsReminderEnabled) {
-      const smsMessage = buildMeetingReminderSms({
-        title,
-        meetingAt,
-        venue,
-        reason,
-      });
-
-      const smsResults = await Promise.all(
-        users.map(async (user) => {
-          if (!user.phone) return false;
-
-          const result = await sendSms({
-            to: user.phone,
-            message: smsMessage,
-          });
-
-          return result.success;
-        })
-      );
-
-      smsSentCount = smsResults.filter(Boolean).length;
-      smsFailedCount = smsResults.length - smsSentCount;
-
-      if (smsSentCount > 0) {
-        const sentAt = new Date();
-
-        await MeetingNotice.findByIdAndUpdate(notice._id, {
-          $set: {
-            smsReminderSent: true,
-            smsReminderSentAt: sentAt,
-          },
-        });
-
-        notice.smsReminderSent = true;
-        notice.smsReminderSentAt = sentAt;
-      }
-    }
-
     return NextResponse.json(
       {
         success: true,
         message: smsReminderEnabled
-          ? `Meeting notice created. Notifications sent to ${users.length} users. SMS sent to ${smsSentCount} users.`
+          ? `Meeting notice created. Notifications sent to ${users.length} users. SMS reminder scheduled for one day before the meeting.`
           : `Meeting notice created. Notifications sent to ${users.length} users.`,
         notice,
         notifiedUsers: users.length,
-        smsSentCount,
-        smsFailedCount,
+        smsSentCount: 0,
+        smsFailedCount: 0,
       },
       { status: 201 }
     );

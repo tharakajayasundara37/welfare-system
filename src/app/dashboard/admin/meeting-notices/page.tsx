@@ -250,13 +250,10 @@ export default function AdminMeetingNoticesPage() {
       setMessage("");
       setIsSuccess(false);
 
-      const response = await fetch(
-        "/api/cron/meeting-reminders?secret=welfarex_meeting_secret_123",
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+      const response = await fetch("/api/cron/meeting-reminders", {
+        method: "GET",
+        cache: "no-store",
+      });
 
       const result = (await readJsonResponse(
         response

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import dbConnect from "@/lib/dbConnect";
+import { getCurrentUser } from "@/lib/getCurrentUser";
 import MeetingNotice from "@/models/MeetingNotice";
 import User from "@/models/User";
 
@@ -28,14 +29,16 @@ type LeanUser = {
 };
 
 function getTomorrowRange() {
-  const now = new Date();
-
-  const start = new Date(now);
-  start.setDate(start.getDate() + 1);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(start);
-  end.setHours(23, 59, 59, 999);
+  const sriLankaOffsetMs = 5.5 * 60 * 60 * 1000;
+  const nowInSriLanka = new Date(Date.now() + sriLankaOffsetMs);
+  const start = new Date(
+    Date.UTC(
+      nowInSriLanka.getUTCFullYear(),
+      nowInSriLanka.getUTCMonth(),
+      nowInSriLanka.getUTCDate() + 1
+    ) - sriLankaOffsetMs
+  );
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   return { start, end };
 }
@@ -93,14 +96,19 @@ function isValidSriLankanMobile(phone: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const secret = searchParams.get("secret");
+    const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+    const isVercelCron = Boolean(
+      cronSecret && authHeader === `Bearer ${cronSecret}`
+    );
+    const currentUser = isVercelCron ? null : await getCurrentUser();
+    const isAdminManualRun = currentUser?.role === "admin";
 
-    if (secret !== process.env.MEETING_REMINDER_SECRET) {
+    if (!isVercelCron && !isAdminManualRun) {
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid reminder secret.",
+          message: "Unauthorized reminder request.",
         },
         { status: 401 }
       );

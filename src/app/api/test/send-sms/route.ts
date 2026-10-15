@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { sendSms } from "@/lib/sms/sendSms";
+import { getCurrentUser } from "@/lib/getCurrentUser";
 
 export async function POST(request: NextRequest) {
   try {
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser || currentUser.role !== "admin") {
+      return NextResponse.json(
+        { success: false, message: "Access denied. Admin only." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
 
     const to = typeof body.to === "string" ? body.to.trim() : "";
