@@ -4,7 +4,7 @@ type SendSmsParams = {
 };
 
 type TextLkResponse = {
-  status?: boolean;
+  status?: boolean | string;
   message?: string;
   data?: unknown;
 };
@@ -49,10 +49,11 @@ export async function sendSms({
   message,
 }: SendSmsParams): Promise<SendSmsResult> {
   try {
-    const apiKey = process.env.TEXTLK_API_KEY;
-    const senderId = process.env.TEXTLK_SENDER_ID || "TextLKDemo";
+    const apiKey = process.env.TEXTLK_API_KEY?.trim();
+    const senderId = process.env.TEXTLK_SENDER_ID?.trim() || "TextLKDemo";
     const apiUrl =
-      process.env.TEXTLK_API_URL || "https://app.text.lk/api/v3/sms/send";
+      process.env.TEXTLK_API_URL?.trim() ||
+      "https://app.text.lk/api/v3/sms/send";
 
     if (!apiKey) {
       return {
@@ -94,6 +95,7 @@ export async function sendSms({
         type: "plain",
         message: message.trim(),
       }),
+      signal: AbortSignal.timeout(15000),
     });
 
     const contentType = response.headers.get("content-type");
@@ -107,9 +109,15 @@ export async function sendSms({
     }
 
     if (!response.ok) {
+      const providerMessage =
+        typeof data === "object" && data !== null && "message" in data
+          ? String((data as TextLkResponse).message || "").trim()
+          : "";
+
       return {
         success: false,
-        message: `Text.lk API error. HTTP ${response.status}`,
+        message:
+          providerMessage || `Text.lk API error. HTTP ${response.status}`,
         to,
         normalizedTo,
         providerResponse: data,
@@ -117,8 +125,17 @@ export async function sendSms({
     }
 
     const textLkData = data as TextLkResponse;
+    const providerStatus =
+      typeof textLkData.status === "string"
+        ? textLkData.status.trim().toLowerCase()
+        : textLkData.status;
 
-    if (textLkData.status === false) {
+    if (
+      providerStatus === false ||
+      providerStatus === "error" ||
+      providerStatus === "failed" ||
+      providerStatus === "fail"
+    ) {
       return {
         success: false,
         message: textLkData.message || "Text.lk failed to queue SMS.",
