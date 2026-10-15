@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tharaka Jayasundara | Full-Stack Developer",
-  description: "Portfolio of Tharaka Jayasundara, an IT student and full-stack developer based in Sri Lanka.",
+  title: "Welfare",
+  description: "Welfare Management System",
 };
 
 export default function RootLayout({

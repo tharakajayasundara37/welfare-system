@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Roboto } from "next/font/google";
 import MobileDashboardMenu from "@/components/dashboard/MobileDashboardMenu";
 
 import {
@@ -23,6 +24,12 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import AccountMenu from "@/components/dashboard/AccountMenu";
 import NotificationBell from "@/components/dashboard/NotificationBell";
 import { DashboardThemeProvider } from "@/components/theme/DashboardThemeProvider";
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+  display: "swap",
+});
 
 type UserRole = "admin" | "member" | "welfare_officer" | "finance_officer";
 
@@ -394,7 +401,7 @@ export default async function DashboardLayout({
   return (
     <DashboardThemeProvider>
       <div
-        className="h-screen overflow-hidden bg-[#2c241f] font-sans text-white"
+        className={`${roboto.className} h-screen overflow-hidden bg-[#2c241f] text-white`}
       >
         <div className="flex h-screen overflow-hidden">
           <aside className="dashboard-no-scrollbar relative hidden h-screen w-80 shrink-0 overflow-y-auto overflow-x-hidden border-r border-[#d8ad80]/18 bg-[#211b17] p-6 text-white shadow-[25px_0_100px_rgba(44,36,31,0.55)] lg:block">

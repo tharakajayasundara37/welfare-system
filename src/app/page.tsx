@@ -1,110 +1,418 @@
-"use client";
+import Link from "next/link";
 
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import { ArrowDown, ArrowRight, ArrowUpRight, Code2, Database, Menu, Smartphone, X } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  ClipboardCheck,
+  CreditCard,
+  FileCheck,
+  HandHeart,
+  Landmark,
+  LockKeyhole,
+  ShieldCheck,
+  Users,
+  WalletCards,
+} from "lucide-react";
 
-const services = [
-  { n: "01", title: "Web Development", text: "Fast, responsive and modern websites built for real people.", icon: Code2 },
-  { n: "02", title: "Mobile Applications", text: "Useful Android experiences with clean, intuitive interfaces.", icon: Smartphone },
-  { n: "03", title: "Backend Systems", text: "Reliable APIs, databases and complete management platforms.", icon: Database },
+const modules = [
+  {
+    title: "Member Management",
+    description:
+      "Register welfare members, approve accounts, manage member profiles and control account status.",
+    icon: Users,
+  },
+  {
+    title: "Loan Approval Workflow",
+    description:
+      "Manage welfare loan applications through welfare officer review, admin approval and finance processing.",
+    icon: Landmark,
+  },
+  {
+    title: "Document Verification",
+    description:
+      "Verify NIC details, salary information and supporting documents before approving requests.",
+    icon: FileCheck,
+  },
+  {
+    title: "Payment Tracking",
+    description:
+      "Track monthly welfare fees, loan installments, due payments and gateway-based transaction records.",
+    icon: CreditCard,
+  },
 ];
 
-const projects = [
-  { n: "01", title: "WelfareX", type: "Full-stack management system", tone: "orange", tags: "NEXT.JS · MONGODB · TYPESCRIPT" },
-  { n: "02", title: "MediCare", type: "Mobile appointment application", tone: "acid", tags: "ANDROID · JAVA · UI/UX" },
-  { n: "03", title: "NewsBlog", type: "News content platform", tone: "paper", tags: "LARAVEL · PHP · MYSQL" },
+const roles = [
+  {
+    title: "Admin",
+    description:
+      "Controls members, staff accounts, loan settings, loan approvals and system reports.",
+  },
+  {
+    title: "Member",
+    description:
+      "Registers to the system, applies for welfare loans or support and tracks application status.",
+  },
+  {
+    title: "Welfare Officer",
+    description:
+      "Reviews member applications, checks documents and forwards verified requests.",
+  },
+  {
+    title: "Finance Officer",
+    description:
+      "Handles disbursement records, installment tracking and payment-related activities.",
+  },
+];
+
+const workflow = [
+  "Member creates an account and submits required details.",
+  "Admin reviews and activates the member account.",
+  "Member applies for loan or welfare support.",
+  "Welfare officer checks documents and application details.",
+  "Admin gives the final approval or rejection.",
+  "Finance officer manages disbursement and payment tracking.",
+];
+
+const highlights = [
+  "Secure access for approved organization users",
+  "Designed as an internal management system",
+  "Role-based dashboards for system users",
+  "Loan, grant, document and finance workflow support",
+  "Payment gateway based flow without internal wallet balance",
+  "Reports and tracking for better admin decisions",
 ];
 
 export default function HomePage() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add("in-view")),
-      { threshold: 0.14 }
-    );
-    const nodes = document.querySelectorAll("[data-reveal]");
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <main className="unifex-site">
-      <header className="u-header">
-        <a href="#home" className="u-logo"><span>◆</span> THARAKA</a>
-        <nav className="u-socials"><a href="mailto:tharakajayasundara37@gmail.com">EMAIL</a><a href="#works">WORK</a><a href="#contact">CONTACT</a></nav>
-        <a className="u-cv" href="#contact">LET&apos;S TALK <ArrowUpRight size={14} /></a>
-        <button className="u-menu" onClick={() => setOpen(!open)} aria-label="Open menu">{open ? <X /> : <Menu />}</button>
-        {open && <nav className="u-mobile-nav">{["About","Services","Works","Contact"].map(x=><a key={x} onClick={()=>setOpen(false)} href={`#${x.toLowerCase()}`}>{x}</a>)}</nav>}
-      </header>
+    <main className="min-h-screen overflow-hidden bg-[#eee6da] text-[#2b241f]">
+      <div className="relative min-h-screen overflow-hidden">
+        <div className="pointer-events-none absolute left-0 top-0 h-[520px] w-[520px] rounded-full bg-[#c99b69]/25 blur-[130px]" />
+        <div className="pointer-events-none absolute right-0 top-40 h-[520px] w-[520px] rounded-full bg-[#2c241f]/10 blur-[150px]" />
+        <div className="pointer-events-none absolute bottom-0 left-1/2 h-[420px] w-[420px] rounded-full bg-[#d8ad80]/25 blur-[140px]" />
 
-      <section className="u-hero" id="home">
-        <div className="u-hero-word"><span>FULL-STACK</span>DEVELOPER</div>
-        <div className="u-hero-left u-rise">
-          <p className="u-mini-title">QUICK LINKS</p>
-          <p>BASED IN SRI LANKA<br/>AVAILABLE WORLDWIDE</p>
-          <div className="u-link-row"><a href="#works">PROJECTS</a><a href="#about">ABOUT ME</a></div>
-        </div>
-        <div className="u-portrait u-rise delay-1">
-          <div className="u-orange-disc" />
-          <Image src="/images/tharaka-cutout-v2.png" alt="Tharaka Jayasundara" fill priority sizes="(max-width: 700px) 86vw, 42vw" />
-        </div>
-        <div className="u-hero-right u-rise delay-2">
-          <div><b>03+</b><span>PROJECTS<br/>COMPLETED</span></div>
-          <div><b>04</b><span>CORE<br/>TECHNOLOGIES</span></div>
-          <div><b>100%</b><span>PASSION FOR<br/>DEVELOPMENT</span></div>
-        </div>
-        <a href="#about" className="u-float-arrow"><ArrowDown size={18}/></a>
-      </section>
+        <section className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          {/* Header */}
+          <header className="mb-8 flex items-center justify-between rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 px-5 py-4 shadow-[0_20px_70px_rgba(44,36,31,0.12)] backdrop-blur-2xl">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2c241f] text-[#fbf7ef] shadow-lg shadow-[#2c241f]/20">
+                <HandHeart size={24} />
+              </div>
 
-      <div className="u-marquee"><div>WEB DEVELOPMENT ✦ MOBILE APPS ✦ UI DESIGN ✦ BACKEND SYSTEMS ✦ WEB DEVELOPMENT ✦ MOBILE APPS ✦ UI DESIGN ✦ BACKEND SYSTEMS ✦</div></div>
+              <div>
+                <h1 className="text-xl font-extrabold tracking-tight text-[#2b241f]">
+                  WelfareX
+                </h1>
+                <p className="text-xs font-semibold text-[#9b6f45]">
+                  Internal Welfare Management System
+                </p>
+              </div>
+            </Link>
 
-      <section className="u-manifesto" id="about">
-        <div className="u-metric" data-reveal><strong>03+</strong><span>PROJECTS BUILT<br/>FROM IDEA TO PRODUCT</span></div>
-        <h2 data-reveal>I AM DEDICATED TO BRINGING YOUR VISION TO LIFE BY CRAFTING UNIQUE, HIGHLY AESTHETIC, AND IMPACTFUL DIGITAL EXPERIENCES. <span>MY WORK SPEAKS LOUDER THAN WORDS.</span></h2>
-        <a href="#works" className="u-lime-dot"><ArrowDown /></a>
-      </section>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 px-5 py-2.5 text-sm font-extrabold text-[#2b241f] transition hover:bg-[#fffaf3]"
+              >
+                Login
+              </Link>
 
-      <section className="u-about-detail">
-        <div className="u-about-image" data-reveal><Image src="/images/tharaka-jayasundara.jpeg" alt="Tharaka at SLIATE" fill sizes="(max-width: 800px) 100vw, 50vw" /></div>
-        <div className="u-about-copy" data-reveal>
-          <p className="u-kicker">01 / WHO I AM</p>
-          <h2>Creative thinking.<br/><span>Practical building.</span></h2>
-          <p>I&apos;m Tharaka Jayasundara, an Information Technology student at SLIATE Kurunegala. I turn real-world challenges into straightforward web and mobile products.</p>
-          <p>From interface design to databases and deployment, I enjoy shaping the complete experience.</p>
-          <a href="#contact">MORE ABOUT ME <ArrowRight size={16}/></a>
-          <div className="u-experience"><b>IT</b><span>Student &amp;<br/>Developer</span></div>
-        </div>
-      </section>
+              <Link
+                href="/register"
+                className="hidden rounded-2xl bg-[#2c241f] px-5 py-2.5 text-sm font-extrabold text-[#fbf7ef] shadow-lg shadow-[#2c241f]/20 transition hover:bg-[#9b6f45] sm:inline-flex"
+              >
+                Register
+                <ArrowRight className="ml-2" size={16} />
+              </Link>
+            </div>
+          </header>
 
-      <section className="u-services" id="services">
-        <p className="u-kicker light">02 / WHAT I DO</p>
-        <h2 data-reveal>SERVICES</h2>
-        <div className="u-service-list">
-          {services.map(({n,title,text,icon:Icon})=><article key={title} data-reveal><span>{n}</span><Icon/><div><h3>{title}</h3><p>{text}</p></div><ArrowUpRight className="u-service-arrow"/></article>)}
-        </div>
-        <div className="u-service-blob">CREATE<br/>BUILD<br/>GROW</div>
-      </section>
+          {/* Hero */}
+          <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="relative overflow-hidden rounded-[38px] border border-[#d9c8b8] bg-[#fbf7ef]/90 p-7 shadow-[0_30px_100px_rgba(44,36,31,0.16)] backdrop-blur-2xl md:p-10 lg:p-12">
+              <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#d8ad80]/25 blur-3xl" />
 
-      <section className="u-works" id="works">
-        <div className="u-works-top"><p className="u-kicker">03 / SELECTED PROJECTS</p><span>SCROLL TO EXPLORE →</span></div>
-        <h2 data-reveal>WORKS</h2>
-        <div className="u-projects">
-          {projects.map((project)=><article className={`u-project ${project.tone}`} key={project.title} data-reveal>
-            <div className="u-project-meta"><span>{project.n}</span><span>{project.tags}</span></div>
-            <div className="u-project-screen"><span className="screen-bar"/><strong>{project.title}</strong><small>{project.type}</small><div className="screen-button">VIEW CASE STUDY</div></div>
-            <h3>{project.title}</h3><p>{project.type}</p>
-          </article>)}
-        </div>
-      </section>
+              <div className="relative">
+                <div className="mb-6 inline-flex items-center rounded-full border border-[#d9c8b8] bg-[#f8f1e8] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.25em] text-[#9b6f45]">
+                  <LockKeyhole className="mr-2" size={15} />
+                  Local System 
+                </div>
 
-      <section className="u-contact" id="contact">
-        <p className="u-kicker light">04 / GET IN TOUCH</p>
-        <h2 data-reveal>LET&apos;S MAKE<br/>SOMETHING <span>GREAT.</span></h2>
-        <a href="mailto:tharakajayasundara37@gmail.com" className="u-contact-link">THARAKAJAYASUNDARA37@GMAIL.COM <ArrowUpRight/></a>
-        <footer><span>© 2026 THARAKA JAYASUNDARA</span><a href="#home">BACK TO TOP ↑</a></footer>
-      </section>
+                <h2 className="max-w-4xl text-4xl font-extrabold leading-tight tracking-[-0.05em] text-[#2b241f] md:text-6xl">
+                  Welfare Management & Emergency Relief System
+                </h2>
+
+                <p className="mt-6 max-w-3xl text-base leading-8 text-[#6b5e54] md:text-lg">
+                  Welfare is a professional internal welfare management system
+                  designed to manage members, welfare loans, emergency support,
+                  staff accounts, document verification, approvals, payment
+                  records and reports from one secure local system interface.
+                </p>
+
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-[#79695d] md:text-base">
+                  The system is available through a secure web deployment and
+                  is designed for internal organizational use.
+                </p>
+
+                <div className="mt-9 flex flex-wrap gap-3">
+                  <Link
+                    href="/login"
+                    className="inline-flex h-14 items-center justify-center rounded-2xl bg-[#2c241f] px-7 text-sm font-extrabold text-[#fbf7ef] shadow-lg shadow-[#2c241f]/20 transition hover:-translate-y-0.5 hover:bg-[#9b6f45]"
+                  >
+                    Open System Login
+                    <ArrowRight className="ml-2" size={18} />
+                  </Link>
+
+                  <Link
+                    href="/register"
+                    className="inline-flex h-14 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 px-7 text-sm font-extrabold text-[#2b241f] transition hover:-translate-y-0.5 hover:bg-[#fffaf3]"
+                  >
+                    Create Member Account
+                  </Link>
+                </div>
+
+                <div className="mt-9 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 p-4">
+                    <p className="text-2xl font-extrabold text-[#2b241f]">
+                      4 Roles
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-[#79695d]">
+                      Admin, Member, Officer, Finance
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 p-4">
+                    <p className="text-2xl font-extrabold text-[#2b241f]">
+                      Secure
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-[#79695d]">
+                      Login and approval workflow
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 p-4">
+                    <p className="text-2xl font-extrabold text-[#2b241f]">
+                      Gateway
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-[#79695d]">
+                      No internal wallet balance
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Summary Panel */}
+            <div className="relative overflow-hidden rounded-[38px] border border-[#d9c8b8] bg-[#2c241f] p-7 text-[#fbf7ef] shadow-[0_30px_100px_rgba(44,36,31,0.22)] md:p-8">
+              <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#d8ad80]/25 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-20 h-80 w-80 rounded-full bg-[#9b6f45]/20 blur-3xl" />
+
+              <div className="relative">
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d8ad80]/35 bg-[#d8ad80]/15 text-[#d8ad80]">
+                  <Building2 size={27} />
+                </div>
+
+                <p className="text-xs font-extrabold uppercase tracking-[0.3em] text-[#d8ad80]">
+                  System Overview
+                </p>
+
+                <h3 className="mt-5 text-3xl font-extrabold leading-tight">
+                  Built for organized welfare operations
+                </h3>
+
+                <p className="mt-5 text-sm leading-7 text-[#f6eadc]/75">
+                  Welfare helps an organization manage the full welfare
+                  process from member registration to finance processing using
+                  role-based dashboards and clear workflow stages.
+                </p>
+
+                <div className="mt-7 space-y-3">
+                  {highlights.map((item) => (
+                    <div
+                      key={item}
+                      className="flex items-start gap-3 rounded-2xl border border-[#d8ad80]/20 bg-[#fbf7ef]/10 p-4"
+                    >
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#d8ad80]" />
+                      <p className="text-sm leading-6 text-[#f6eadc]/85">
+                        {item}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Modules */}
+          <section className="mt-8">
+            <div className="mb-6 flex flex-col gap-2">
+              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-[#9b6f45]">
+                Main Modules
+              </p>
+              <h2 className="text-3xl font-extrabold tracking-tight text-[#2b241f] md:text-4xl">
+                Core system capabilities
+              </h2>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              {modules.map((module) => {
+                const Icon = module.icon;
+
+                return (
+                  <div
+                    key={module.title}
+                    className="group overflow-hidden rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/90 p-6 text-[#2b241f] shadow-[0_25px_90px_rgba(44,36,31,0.14)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:border-[#9b6f45]/45 hover:bg-[#fffaf3]"
+                  >
+                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] text-[#9b6f45] shadow-lg shadow-[#2c241f]/10">
+                      <Icon size={22} />
+                    </div>
+
+                    <h3 className="text-lg font-extrabold text-[#2b241f]">
+                      {module.title}
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-6 text-[#6b5e54]">
+                      {module.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Roles and Workflow */}
+          <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="relative overflow-hidden rounded-[34px] border border-[#d9c8b8] bg-[#fbf7ef]/90 p-7 shadow-[0_30px_100px_rgba(44,36,31,0.14)] backdrop-blur-2xl">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#d8ad80]/20 blur-3xl" />
+
+              <div className="relative">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] text-[#9b6f45]">
+                  <ShieldCheck size={24} />
+                </div>
+
+                <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-[#9b6f45]">
+                  User Roles
+                </p>
+
+                <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#2b241f]">
+                  Role-based system access
+                </h2>
+
+                <div className="mt-6 grid gap-3">
+                  {roles.map((role) => (
+                    <div
+                      key={role.title}
+                      className="rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 p-4"
+                    >
+                      <h3 className="text-base font-extrabold text-[#2b241f]">
+                        {role.title}
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-[#6b5e54]">
+                        {role.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-[34px] border border-[#d9c8b8] bg-[#fbf7ef]/90 p-7 shadow-[0_30px_100px_rgba(44,36,31,0.14)] backdrop-blur-2xl">
+              <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-[#d8ad80]/20 blur-3xl" />
+
+              <div className="relative">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] text-[#9b6f45]">
+                  <ClipboardCheck size={24} />
+                </div>
+
+                <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-[#9b6f45]">
+                  Workflow
+                </p>
+
+                <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#2b241f]">
+                  How the system works
+                </h2>
+
+                <div className="mt-6 grid gap-3">
+                  {workflow.map((step, index) => (
+                    <div
+                      key={step}
+                      className="flex items-start gap-3 rounded-2xl border border-[#d9c8b8] bg-[#f8f1e8]/80 p-4"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2c241f] text-xs font-extrabold text-[#fbf7ef]">
+                        {index + 1}
+                      </div>
+
+                      <p className="text-sm font-semibold leading-6 text-[#6b5e54]">
+                        {step}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Payment and Reports */}
+          <section className="mt-8 grid gap-6 lg:grid-cols-3">
+            <div className="rounded-[34px] border border-[#d9c8b8] bg-[#2c241f] p-7 text-[#fbf7ef] shadow-[0_30px_100px_rgba(44,36,31,0.22)] lg:col-span-1">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d8ad80]/35 bg-[#d8ad80]/15 text-[#d8ad80]">
+                <WalletCards size={24} />
+              </div>
+
+              <h2 className="text-2xl font-extrabold">
+                Payment Gateway Based
+              </h2>
+
+              <p className="mt-4 text-sm leading-7 text-[#f6eadc]/75">
+                Welfare does not use an internal wallet balance. Monthly fees,
+                installments and transaction records are handled using a
+                gateway-based payment tracking flow.
+              </p>
+            </div>
+
+            <div className="rounded-[34px] border border-[#d9c8b8] bg-[#fbf7ef]/90 p-7 shadow-[0_30px_100px_rgba(44,36,31,0.14)] lg:col-span-2">
+              <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+                <div>
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#d9c8b8] bg-[#f1e5d8] text-[#9b6f45]">
+                    <BarChart3 size={24} />
+                  </div>
+
+                  <h2 className="text-2xl font-extrabold text-[#2b241f]">
+                    Reports and Tracking
+                  </h2>
+
+                  <p className="mt-4 max-w-2xl text-sm leading-7 text-[#6b5e54]">
+                    Admins can monitor member counts, loan approvals, staff
+                    accounts, repayment status, finance records and system
+                    performance using internal reports.
+                  </p>
+                </div>
+
+                <Link
+                  href="/login"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#9b6f45] px-6 text-sm font-extrabold text-white shadow-lg shadow-[#9b6f45]/20 transition hover:bg-[#835c38]"
+                >
+                  Continue to System
+                  <ArrowRight className="ml-2" size={17} />
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* Footer Note */}
+          <section className="mt-8 pb-8">
+            <div className="rounded-[30px] border border-[#d9c8b8] bg-[#fbf7ef]/80 p-5 text-center shadow-[0_20px_70px_rgba(44,36,31,0.10)] backdrop-blur-2xl">
+              <p className="flex flex-wrap items-center justify-center gap-2 text-sm font-semibold text-[#6b5e54]">
+                <BadgeCheck size={17} className="text-[#9b6f45]" />
+                This is the introduction page of the Welfare internal system.
+                Actual system operations are available after login.
+              </p>
+            </div>
+          </section>
+        </section>
+      </div>
     </main>
   );
 }
